@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Arknights 10-pull</title>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #111; color: #eee; text-align: center; padding: 2rem; }
+      img { max-width: 100%; margin-top: 1rem; }
+      button { font-size: 1.1rem; padding: .6rem 1.4rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Arknights 10-pull</h1>
+    <button id="pull">Pull</button>
+    <div><img id="result" alt="" hidden /></div>
+    <script>
+      const btn = document.getElementById("pull");
+      const img = document.getElementById("result");
+      btn.onclick = async () => {
+        btn.disabled = true;
+        try {
+          const res = await fetch("/api/pull");
+          if (!res.ok) throw new Error(await res.text());
+          img.src = URL.createObjectURL(await res.blob());
+          img.hidden = false;
+        } catch (e) { alert(e.message); }
+        btn.disabled = false;
+      };
+    </script>
+  </body>
+</html>

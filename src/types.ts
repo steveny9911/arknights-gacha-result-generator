@@ -1,0 +1,37 @@
+/** A star tier that can appear in a headhunting pull. */
+export type Tier = 6 | 5 | 4 | 3;
+
+/** A source of randomness: each call returns a number in [0, 1). */
+export type Rng = () => number;
+
+/** Operator class, as named in character_table.json `profession`. */
+export type Profession =
+  | "PIONEER"
+  | "WARRIOR"
+  | "TANK"
+  | "SNIPER"
+  | "CASTER"
+  | "SUPPORT"
+  | "MEDIC"
+  | "SPECIAL";
+
+/** The slice of operator data this project needs. */
+export interface Operator {
+  /** e.g. `char_002_amiya` */
+  id: string;
+  name: string;
+  rarity: Tier;
+  profession: Profession;
+}
+
+/** Operator ids available in each tier. No rate-up: every operator in a tier is equally likely. */
+export interface Banner {
+  pool: Readonly<Record<Tier, readonly string[]>>;
+}
+
+export interface TenPullResult {
+  /** Ten operator ids in pull order. */
+  operators: string[];
+  /** Misses in a row after the last pull. */
+  finalPity: number;
+}
