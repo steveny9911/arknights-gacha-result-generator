@@ -42,7 +42,8 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
     }),
   );
 
-  const image = await renderMontage(entries, opts);
+  const halftoneMask = opts.halftoneMask ?? (await provider.getHalftoneMask());
+  const image = await renderMontage(entries, { ...opts, halftoneMask });
   return { image, result };
 }
 

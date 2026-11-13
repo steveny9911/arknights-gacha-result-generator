@@ -1,8 +1,10 @@
 // SLICE 4: compose the ten-pull image with sharp.
-// Layout per column (top to bottom): white stars, portrait, class icon tile. Columns are flush.
+// Each column: tier-coloured background, then (top to bottom) white stars, portrait, class icon tile.
+// Columns are flush.
 // Pure function of (operators, image bytes) -> encoded image bytes; no network.
 import sharp, { type OverlayOptions } from "sharp";
-import type { Operator } from "../types.ts";
+import type { Operator, Tier } from "../types.ts";
+import { renderColumnBackground } from "./column-background.ts";
 
 export interface MontageEntry {
   operator: Operator;
@@ -16,6 +18,8 @@ export interface MontageEntry {
 export interface MontageOptions {
   /** Output format. Default "png". */
   format?: "png" | "webp";
+  /** Halftone dot mask for the 6-star column background. Without it that tier gets a plain gradient. */
+  halftoneMask?: Uint8Array;
 }
 
 /** Layout constants, in pixels. Portraits are 180x360 in the source assets. */
@@ -42,10 +46,23 @@ export async function renderMontage(
 ): Promise<Uint8Array> {
   if (entries.length === 0) throw new RangeError("entries must not be empty");
 
+  // One background per tier, shared by every column of that tier.
+  const backgrounds = new Map<Tier, Buffer>();
+  const backgroundFor = async (tier: Tier) => {
+    let background = backgrounds.get(tier);
+    if (!background) {
+      background = await renderColumnBackground(tier, PORTRAIT_WIDTH, MONTAGE_HEIGHT, opts.halftoneMask);
+      backgrounds.set(tier, background);
+    }
+    return background;
+  };
+
   const layers: OverlayOptions[] = [];
   for (const [i, entry] of entries.entries()) {
     const left = PADDING + i * PORTRAIT_WIDTH;
     const centred = (width: number) => left + Math.floor((PORTRAIT_WIDTH - width) / 2);
+
+    layers.push({ input: await backgroundFor(entry.operator.rarity), left, top: 0 });
 
     const portrait = await sharp(entry.portrait)
       .resize(PORTRAIT_WIDTH, PORTRAIT_HEIGHT, { fit: "cover" })

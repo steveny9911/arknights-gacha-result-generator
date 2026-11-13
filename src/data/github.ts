@@ -3,6 +3,7 @@
 //   images : ArknightsAssets2 (cn branch) assets/dyn/arts/charportraits/
 //                                         assets/dyn/arts/profession_large_hub/
 //                                         assets/dyn/arts/rarity_hub/
+//                                         assets/dyn/arts/[pack]cmgachapool/rgba/
 // Downloads are cached on disk under `cacheDir` so repeat runs are offline.
 import type { Operator, Profession, Tier } from "../types.ts";
 import { parseCharacterTable } from "./character-table.ts";
@@ -18,9 +19,11 @@ const ASSETS_BRANCH = "cn";
 const PORTRAIT_DIR = "assets/dyn/arts/charportraits";
 const ICON_DIR = "assets/dyn/arts/profession_large_hub";
 const STARS_DIR = "assets/dyn/arts/rarity_hub";
+const EFFECTS_DIR = "assets/dyn/arts/[pack]cmgachapool/rgba";
+const HALFTONE_FILE = "light_halftone_mask.png";
 
 const rawUrl = (dir: string, file: string) =>
-  `https://raw.githubusercontent.com/${ASSETS_REPO}/${ASSETS_BRANCH}/${dir}/${encodeURIComponent(file)}`;
+  `https://raw.githubusercontent.com/${ASSETS_REPO}/${ASSETS_BRANCH}/${encodeURI(dir)}/${encodeURIComponent(file)}`;
 
 /** One request lists a whole folder (up to 100k entries, unlike the 1000-entry contents API). */
 const portraitListingUrl = `https://api.github.com/repos/${ASSETS_REPO}/git/trees/${ASSETS_BRANCH}:${PORTRAIT_DIR}`;
@@ -61,6 +64,9 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
     getStars(tier: Tier) {
       const file = starsFile(tier);
       return fetchCached(rawUrl(STARS_DIR, file), `${cacheDir}/stars/${file}`);
+    },
+    getHalftoneMask() {
+      return fetchCached(rawUrl(EFFECTS_DIR, HALFTONE_FILE), `${cacheDir}/effects/${HALFTONE_FILE}`);
     },
   };
 }

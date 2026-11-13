@@ -14,4 +14,6 @@ export interface DataProvider {
   getClassIcon(profession: Profession): Promise<Uint8Array>;
   /** Row of white stars (PNG, transparent) for a tier. */
   getStars(tier: Tier): Promise<Uint8Array>;
+  /** White-dots-on-black halftone mask (PNG) used for the 6-star column background. */
+  getHalftoneMask(): Promise<Uint8Array>;
 }

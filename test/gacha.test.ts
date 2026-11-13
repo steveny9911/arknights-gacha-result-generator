@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { pickOperator, rollRarity, sixStarRate, tenPull, weightedPick } from "../src/gacha/gacha.ts";
+import { seededRng } from "../src/gacha/seeded-rng.ts";
 import type { Banner, Rng, Tier } from "../src/types.ts";
 
 /** A fake rng that returns the given numbers in order. */
@@ -10,17 +11,6 @@ const seq = (...values: number[]): Rng => {
 
 /** A fake rng that always returns the same number. */
 const constant = (value: number): Rng => () => value;
-
-/** Small seedable rng (mulberry32) for the statistics test. */
-function seeded(seed: number): Rng {
-  let a = seed;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 const BANNER: Banner = {
   pool: {
@@ -147,7 +137,7 @@ describe("tenPull", () => {
   });
 
   test("statistics match the expected shares", () => {
-    const rng = seeded(1234);
+    const rng = seededRng(1234);
     const counts: Record<Tier, number> = { 6: 0, 5: 0, 4: 0, 3: 0 };
     const runs = 20_000;
     for (let i = 0; i < runs; i++) {

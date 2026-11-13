@@ -66,15 +66,28 @@ describe("renderMontage", () => {
     const bottom = PADDING + STARS_HEIGHT - 1; // last row of the star band
     expect(await pixel(image, centreX, bottom)).toEqual(STARS_RGB);
     expect(await pixel(image, centreX, bottom - 29)).toEqual(STARS_RGB); // 30px tall
-    expect(await pixel(image, centreX, bottom - 30)).toEqual(await pixel(image, 2, 2)); // above: background
-    expect(await pixel(image, PADDING + 5, bottom)).toEqual(await pixel(image, 2, 2)); // 100px wide: edges empty
+    // Outside the 100px-wide, 30px-tall star image the pixel is just the column background.
+    expect(await pixel(image, centreX, bottom - 30)).toEqual(await pixel(image, PADDING + 5, bottom - 30));
+    expect(await pixel(image, PADDING + 5, bottom)).not.toEqual(STARS_RGB);
   });
 
   test("class icon tile is centred below the portrait", async () => {
     const image = await renderMontage([await entry([255, 0, 0])]);
     const centreX = PADDING + PORTRAIT_WIDTH / 2;
     expect(await pixel(image, centreX, ICON_TOP + ICON_SIZE / 2)).toEqual(ICON_RGB);
-    expect(await pixel(image, centreX, ICON_TOP - 2)).toEqual(await pixel(image, 2, 2)); // gap is background
+    expect(await pixel(image, centreX, ICON_TOP - 2)).toEqual(await pixel(image, PADDING + 5, ICON_TOP - 2)); // gap shows only the column background
+  });
+
+  test("each column is tinted by its operator's tier", async () => {
+    const tiers = [3, 4, 5, 6] as const;
+    const entries = await Promise.all(
+      tiers.map(async (rarity) => ({ ...(await entry([0, 0, 0])), operator: { ...(await entry([0, 0, 0])).operator, rarity } })),
+    );
+    const image = await renderMontage(entries);
+    const y = MONTAGE_HEIGHT - 4; // below the icon, so only the background is visible
+    const colours = await Promise.all(tiers.map((_, i) => pixel(image, PADDING + i * PORTRAIT_WIDTH + 4, y)));
+    expect(new Set(colours.map((c) => c.join(","))).size).toBe(4);
+    expect(await pixel(image, 2, y)).toEqual(await pixel(image, 2, 2)); // padding stays the plain canvas colour
   });
 
   test("resizes portraits that are not 180x360", async () => {
