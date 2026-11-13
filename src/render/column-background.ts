@@ -8,34 +8,36 @@ import type { Rng, Tier } from "../types.ts";
 interface TierStyle {
   /** Glow colour. */
   glow: string;
+  /** How white the glow turns right at the panel's edge (0 = not at all, 1 = white): a bright halo. */
+  rim: number;
   /** Glow opacity at the panel edges, 0 to 1. */
   glowStrength: number;
   /** Fallback panel gradient colours, top to bottom, used when there is no panel image. */
   panelTop: string;
   panelBottom: string;
-  /** Multiply a panel image by this colour (the 5-star image is white and needs tinting). */
-  panelTint?: string;
   /** Overlay a halftone dot pattern on the glow and the panel. */
   halftone: boolean;
   /** How many sparkles to scatter in one column's glow. */
   sparkles: number;
 }
 
-/** Colours are sampled from the in-game result screen; 5-star is a guess (not in the sample). */
+/** Colours are sampled from two in-game result screenshots. */
 export const TIER_STYLES: Readonly<Record<Tier, TierStyle>> = {
-  3: { glow: "#9a9a9a", glowStrength: 0.12, panelTop: "#313131", panelBottom: "#313131", halftone: false, sparkles: 0 },
-  4: { glow: "#9c8aee", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", halftone: false, sparkles: 22 },
-  5: { glow: "#ffd23c", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", panelTint: "#ffd23c", halftone: false, sparkles: 36 },
-  6: { glow: "#ffb52e", glowStrength: 0.95, panelTop: "#38392a", panelBottom: "#26261f", halftone: true, sparkles: 60 },
+  3: { glow: "#9a9a9a", rim: 0, glowStrength: 0.12, panelTop: "#313131", panelBottom: "#313131", halftone: false, sparkles: 0 },
+  4: { glow: "#9c8aee", rim: 0.7, glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", halftone: false, sparkles: 22 },
+  5: { glow: "#f0dcb8", rim: 0, glowStrength: 0.95, panelTop: "#fdfdfd", panelBottom: "#8f8f8f", halftone: false, sparkles: 36 },
+  6: { glow: "#ffb52e", rim: 0, glowStrength: 0.95, panelTop: "#38392a", panelBottom: "#26261f", halftone: true, sparkles: 60 },
 };
 
 /**
- * How the glow fades, as [distance, opacity] pairs. Distance is 0 at the panel edge and 1 at the canvas
- * edge; opacity is a fraction of the tier's glowStrength. Shaped to match the in-game screen: dark far
- * from the panel, then a quick rise to full strength right at its edge.
+ * How the glow fades, as [distance, opacity, whiteness] triples. Distance is 0 at the panel edge and 1 at the
+ * canvas edge; opacity is a fraction of the tier's glowStrength; whiteness is a fraction of the tier's `rim`.
+ * Shaped to match the in-game screen: dark far from the panel, then a quick rise to full strength right at its
+ * edge, where some tiers also turn whitish.
  */
-const GLOW_ABOVE: ReadonlyArray<readonly [number, number]> = [[1, 0], [0.55, 0.15], [0.2, 0.75], [0, 1]];
-const GLOW_BELOW: ReadonlyArray<readonly [number, number]> = [[0, 1], [0.35, 0.8], [0.75, 0.2], [1, 0.05]];
+type RampStop = readonly [distance: number, opacity: number, whiteness: number];
+const GLOW_ABOVE: readonly RampStop[] = [[1, 0, 0], [0.55, 0.15, 0], [0.2, 0.75, 0.15], [0, 1, 1]];
+const GLOW_BELOW: readonly RampStop[] = [[0, 1, 1], [0.35, 0.8, 0.1], [0.75, 0.2, 0], [1, 0.05, 0]];
 /** Sparkle size (radius) and brightness ranges, in pixels and opacity. */
 const SPARKLE_RADIUS = { min: 1, max: 3 };
 const SPARKLE_OPACITY = { min: 0.4, max: 0.95 };
@@ -50,6 +52,15 @@ export interface ColumnGeometry {
   /** Panel position inside the column. */
   panelTop: number;
   panelHeight: number;
+}
+
+/** `#rrggbb` moved toward white by `amount` (0 = unchanged, 1 = white). */
+function lighten(color: string, amount: number): string {
+  const channel = (offset: number) => {
+    const value = parseInt(color.slice(offset, offset + 2), 16);
+    return Math.round(value + (255 - value) * amount).toString(16).padStart(2, "0");
+  };
+  return `#${channel(1)}${channel(3)}${channel(5)}`;
 }
 
 const verticalGradient = (width: number, height: number, stops: Array<[number, string, number]>) =>
@@ -87,15 +98,16 @@ export async function renderGlow(
   const style = TIER_STYLES[tier];
   const { glow, glowStrength } = style;
   const panelBottom = panelTop + panelHeight;
+  const colourAt = (whiteness: number) => lighten(glow, whiteness * style.rim);
   const stops: Array<[number, string, number]> = [
-    ...GLOW_ABOVE.map(([distance, opacity]): [number, string, number] => [
+    ...GLOW_ABOVE.map(([distance, opacity, whiteness]): [number, string, number] => [
       (panelTop - distance * panelTop) / height,
-      glow,
+      colourAt(whiteness),
       opacity * glowStrength,
     ]),
-    ...GLOW_BELOW.map(([distance, opacity]): [number, string, number] => [
+    ...GLOW_BELOW.map(([distance, opacity, whiteness]): [number, string, number] => [
       (panelBottom + distance * (height - panelBottom)) / height,
-      glow,
+      colourAt(whiteness),
       opacity * glowStrength,
     ]),
   ];
@@ -132,7 +144,7 @@ export async function renderPanelBackground(
   { image, halftoneMask }: PanelSources = {},
 ): Promise<Buffer> {
   const style = TIER_STYLES[tier];
-  if (image) return panelFromImage(style, image, width, height);
+  if (image) return sharp(image).extract(PANEL_IMAGE_AREA).resize(width, height, { fit: "fill" }).png().toBuffer();
 
   // Drawn gradient, plus one halftone square at the top for dotted tiers.
   const base = sharp(
@@ -145,16 +157,6 @@ export async function renderPanelBackground(
 
   const dots = await dotLayer(style.glow, halftoneMask, width);
   return base.composite([{ input: dots, left: 0, top: 0 }]).png().toBuffer();
-}
-
-async function panelFromImage(style: TierStyle, image: Uint8Array, width: number, height: number): Promise<Buffer> {
-  const panel = sharp(image).extract(PANEL_IMAGE_AREA).resize(width, height, { fit: "fill" });
-  if (!style.panelTint) return panel.png().toBuffer();
-  const tint = { create: { width, height, channels: 3 as const, background: style.panelTint } };
-  return panel
-    .composite([{ input: await sharp(tint).png().toBuffer(), blend: "multiply" }])
-    .png()
-    .toBuffer();
 }
 
 /**

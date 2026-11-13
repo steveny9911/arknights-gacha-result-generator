@@ -38,6 +38,14 @@ describe("renderGlow", () => {
     expect(alpha(PANEL_BOTTOM + 50)).toBeGreaterThan(alpha(GEOMETRY.height - 1));
   });
 
+  test("the 4-star glow turns whiter right at the panel edge", async () => {
+    const { at } = await raw(await renderGlow(4, GEOMETRY));
+    const edge = at(5, GEOMETRY.panelTop - 1);
+    const earlier = at(5, GEOMETRY.panelTop - 60);
+    expect(edge[0]! + edge[1]!).toBeGreaterThan(earlier[0]! + earlier[1]!); // red + green rise: less purple, more white
+    expect(Math.min(...edge.slice(0, 3))).toBeGreaterThan(Math.min(...earlier.slice(0, 3)));
+  });
+
   test("tiers have different colours", async () => {
     const colours = await Promise.all(
       TIERS.map(async (tier) => (await raw(await renderGlow(tier, GEOMETRY))).at(5, GEOMETRY.panelTop - 1).join(",")),
@@ -72,12 +80,6 @@ describe("renderPanelBackground", () => {
     const { info, at } = await raw(await renderPanelBackground(4, 60, 200, { image: red }));
     expect([info.width, info.height]).toEqual([60, 200]);
     expect(at(30, 100)).toEqual([255, 0, 0, 255]);
-  });
-
-  test("tints the 5-star panel image (it is white) but not the others", async () => {
-    const white = new Uint8Array(await sharp({ create: { width: 140, height: 388, channels: 3, background: "#ffffff" } }).png().toBuffer());
-    expect((await raw(await renderPanelBackground(4, 20, 20, { image: white }))).at(5, 5)).toEqual([255, 255, 255, 255]);
-    expect((await raw(await renderPanelBackground(5, 20, 20, { image: white }))).at(5, 5)).toEqual([255, 210, 60, 255]);
   });
 
   test("the halftone mask changes only tiers that use it", async () => {

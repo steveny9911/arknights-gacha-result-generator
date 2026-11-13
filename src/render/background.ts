@@ -6,18 +6,18 @@ import type { Rng } from "../types.ts";
 /**
  * Grey level (0-255) at a height (0 = top, 1 = bottom), shaped after the in-game result screen. The 0.787 stop is
  * the floor reflection. The screen's padding strip reaches ~230 there, but inside the open columns it is far dimmer,
- * and a bright band pulls the eye off the portraits, so the peak is kept low.
+ * and a bright band pulls the eye off the portraits, so the peak is kept low (and was lowered twice on request).
  */
 const PROFILE: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
   [0.14, 1],
   [0.28, 8],
   [0.46, 12],
-  [0.65, 26],
-  [0.787, 100],
-  [0.88, 80],
-  [0.926, 52],
-  [1, 28],
+  [0.65, 22],
+  [0.787, 70],
+  [0.88, 56],
+  [0.926, 40],
+  [1, 26],
 ];
 
 /** The random part: the whole profile is brightened or dimmed, and its middle stops slide up or down. */

@@ -39,7 +39,8 @@ All layout numbers are exported constants at the top of `montage.ts`, measured f
 Files: `montage.ts` (layout and compositing, one small helper per layer), `column-background.ts`
 (`renderGlow`, `renderPanelBackground`, and the `TIER_STYLES` table).
 To restyle a tier, edit `TIER_STYLES`; to change how the glow fades, edit `GLOW_ABOVE` / `GLOW_BELOW`.
-Colours for 3/4/6-star are sampled from the screenshot; 5-star (gold glow, grey panel) is a guess.
+Colours are sampled from two in-game screenshots (3/4/5/6-star all covered). 5-star is a pale cream glow over
+the untinted white `back_five` panel; 4-star glow turns whitish at the panel edge (`rim`).
 
 Assets (all from ArknightsAssets2 `cn`):
 - **Stars:** `arts/rarity_hub/rarity_N.png`, white with a drop shadow, N = tier - 1 (`rarity_5` is six stars; 175x47).
@@ -48,9 +49,8 @@ Assets (all from ArknightsAssets2 `cn`):
 - **Class icon tile:** `arts/profession_large_hub/icon_profession_<class>_large_white.png`, 108x109 (a 90x90 tile plus
   shadow), drawn at 1.5x.
 - **Portrait panels (the game's own art):** `ui/recruit/gacha_result/back_low_1_3.png` (3-star and below, dark),
-  `back_four.png` (4-star, grey to lavender with sparkles), `back_five.png` (white sparkle gradient; we multiply it by
-  gold for 5-star, which is a guess). All are 140x388 with the real 122x369 panel at (9, 0) and a drop-shadow margin;
-  we crop to the panel, then stretch to the column (1:3, like the screenshot).
+  `back_four.png` (4-star, grey to lavender with sparkles), `back_five.png` (5-star, near white). All are 140x388 with the
+  real 122x369 panel at (9, 0) and a drop-shadow margin; we crop to the panel, then stretch to the column (1:3).
 - **6-star panel and all glows:** NOT available as images (see below), so they are drawn in code, using
   `arts/[pack]cmgachapool/rgba/light_halftone_mask.png` for the dots.
 - Each glow is 3px narrower than its column (`GLOW_GAP`), leaving the seam between glows seen in the game.
