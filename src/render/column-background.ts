@@ -1,70 +1,125 @@
-// Tier-coloured background for one result column: a vertical gradient, plus a halftone dot
-// pattern on top for tiers that have one. Returns encoded PNG bytes; no network.
+// Tier-coloured backgrounds for one result column, in two parts:
+//   glow  - full-height gradient that peaks at the panel's top and bottom edges
+//   panel - the backdrop directly behind the portrait
+// Tiers with `halftone` also get a dot pattern, which needs a mask image. Returns PNG bytes; no network.
 import sharp from "sharp";
 import type { Tier } from "../types.ts";
 
 interface TierStyle {
-  /** Tint colour. */
-  color: string;
-  /** Peak opacity of the gradient, 0 to 1. */
-  strength: number;
-  /** Draw the halftone dot pattern (needs a mask image). */
+  /** Glow colour. */
+  glow: string;
+  /** Glow opacity at the panel edges, 0 to 1. */
+  glowStrength: number;
+  /** Panel gradient colours, top to bottom. */
+  panelTop: string;
+  panelBottom: string;
+  /** Overlay a halftone dot pattern on the glow and the panel. */
   halftone: boolean;
 }
 
 /** Colours are sampled from the in-game result screen; 5-star is a guess (not in the sample). */
 export const TIER_STYLES: Readonly<Record<Tier, TierStyle>> = {
-  3: { color: "#9a9a9a", strength: 0.15, halftone: false },
-  4: { color: "#7b68d6", strength: 0.6, halftone: false },
-  5: { color: "#e8c04a", strength: 0.65, halftone: false },
-  6: { color: "#f0961e", strength: 0.8, halftone: true },
+  3: { glow: "#9a9a9a", glowStrength: 0.12, panelTop: "#313131", panelBottom: "#313131", halftone: false },
+  4: { glow: "#9c8aee", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", halftone: false },
+  5: { glow: "#ffd23c", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", halftone: false },
+  6: { glow: "#ffb52e", glowStrength: 0.95, panelTop: "#38392a", panelBottom: "#26261f", halftone: true },
 };
 
-/** Where the gradient reaches full strength, as a fraction of the column height. */
-const GLOW_PEAK = 0.2;
-/** Strength at the bottom of the column, relative to the peak. */
-const BOTTOM_FADE = 0.3;
-/** Where the halftone square starts, as a fraction of the column height. */
-const HALFTONE_TOP = 0.1;
+/**
+ * How the glow fades, as [distance, opacity] pairs. Distance is 0 at the panel edge and 1 at the canvas
+ * edge; opacity is a fraction of the tier's glowStrength. Shaped to match the in-game screen: dark far
+ * from the panel, then a quick rise to full strength right at its edge.
+ */
+const GLOW_ABOVE: ReadonlyArray<readonly [number, number]> = [[1, 0], [0.55, 0.15], [0.2, 0.75], [0, 1]];
+const GLOW_BELOW: ReadonlyArray<readonly [number, number]> = [[0, 1], [0.35, 0.8], [0.75, 0.2], [1, 0.05]];
+/** Size of one repeat of the halftone mask over the glow, in pixels. */
+const GLOW_DOT_TILE = 24;
+/** Dots over the glow are fainter than the glow itself. */
+const GLOW_DOT_OPACITY = 0.5;
 
-function gradientSvg(style: TierStyle, width: number, height: number): Buffer {
-  const { color, strength } = style;
-  return Buffer.from(
+export interface ColumnGeometry {
+  width: number;
+  height: number;
+  /** Panel position inside the column. */
+  panelTop: number;
+  panelHeight: number;
+}
+
+const verticalGradient = (width: number, height: number, stops: Array<[number, string, number]>) =>
+  Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
        <defs>
          <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-           <stop offset="0" stop-color="${color}" stop-opacity="0"/>
-           <stop offset="${GLOW_PEAK}" stop-color="${color}" stop-opacity="${strength}"/>
-           <stop offset="1" stop-color="${color}" stop-opacity="${strength * BOTTOM_FADE}"/>
+           ${stops.map(([at, color, opacity]) => `<stop offset="${at}" stop-color="${color}" stop-opacity="${opacity}"/>`).join("")}
          </linearGradient>
        </defs>
        <rect width="100%" height="100%" fill="url(#g)"/>
      </svg>`,
   );
-}
 
-/** A square of the tint colour whose opacity follows the mask's brightness. */
-async function halftoneLayer(color: string, mask: Uint8Array, size: number): Promise<Buffer> {
-  const alpha = await sharp(mask).resize(size, size).extractChannel(0).raw().toBuffer();
+/** A square of `color` whose opacity follows the mask's brightness (white = opaque). */
+async function dotLayer(color: string, mask: Uint8Array, size: number, opacity = 1): Promise<Buffer> {
+  const alpha = await sharp(mask)
+    .resize(size, size)
+    .extractChannel(0)
+    .linear(opacity)
+    .raw()
+    .toBuffer();
   return sharp({ create: { width: size, height: size, channels: 3, background: color } })
     .joinChannel(alpha, { raw: { width: size, height: size, channels: 1 } })
     .png()
     .toBuffer();
 }
 
-/**
- * @param halftoneMask White-dots-on-black image. Without it, halftone tiers get the gradient only.
- */
-export async function renderColumnBackground(
+/** Full-height glow: transparent at the top, strongest along the panel's edges, faint at the bottom. */
+export async function renderGlow(
+  tier: Tier,
+  { width, height, panelTop, panelHeight }: ColumnGeometry,
+  halftoneMask?: Uint8Array,
+): Promise<Buffer> {
+  const style = TIER_STYLES[tier];
+  const { glow, glowStrength } = style;
+  const panelBottom = panelTop + panelHeight;
+  const stops: Array<[number, string, number]> = [
+    ...GLOW_ABOVE.map(([distance, opacity]): [number, string, number] => [
+      (panelTop - distance * panelTop) / height,
+      glow,
+      opacity * glowStrength,
+    ]),
+    ...GLOW_BELOW.map(([distance, opacity]): [number, string, number] => [
+      (panelBottom + distance * (height - panelBottom)) / height,
+      glow,
+      opacity * glowStrength,
+    ]),
+  ];
+  const gradient = await sharp(verticalGradient(width, height, stops)).png().toBuffer();
+  if (!style.halftone || !halftoneMask) return gradient;
+
+  // Repeat the dots over the whole column, then keep them only where the glow is (dest-in = multiply alpha).
+  const tile = await dotLayer(glow, halftoneMask, GLOW_DOT_TILE, GLOW_DOT_OPACITY);
+  const dots = await sharp({ create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: tile, tile: true }, { input: gradient, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+  return sharp(gradient).composite([{ input: dots }]).png().toBuffer();
+}
+
+/** The backdrop behind a portrait: a vertical gradient, plus one halftone square at the top for dotted tiers. */
+export async function renderPanelBackground(
   tier: Tier,
   width: number,
   height: number,
   halftoneMask?: Uint8Array,
 ): Promise<Buffer> {
   const style = TIER_STYLES[tier];
-  const base = sharp(gradientSvg(style, width, height));
+  const base = sharp(
+    verticalGradient(width, height, [
+      [0, style.panelTop, 1],
+      [1, style.panelBottom, 1],
+    ]),
+  );
   if (!style.halftone || !halftoneMask) return base.png().toBuffer();
 
-  const dots = await halftoneLayer(style.color, halftoneMask, width);
-  return base.composite([{ input: dots, left: 0, top: Math.round(height * HALFTONE_TOP) }]).png().toBuffer();
+  const dots = await dotLayer(style.glow, halftoneMask, width);
+  return base.composite([{ input: dots, left: 0, top: 0 }]).png().toBuffer();
 }

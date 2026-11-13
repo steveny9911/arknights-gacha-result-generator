@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import sharp from "sharp";
-import { TIER_STYLES, renderColumnBackground } from "../src/render/column-background.ts";
+import { TIER_STYLES, renderGlow, renderPanelBackground } from "../src/render/column-background.ts";
 
-const W = 60;
-const H = 200;
+const GEOMETRY = { width: 60, height: 400, panelTop: 100, panelHeight: 200 };
+const PANEL_BOTTOM = GEOMETRY.panelTop + GEOMETRY.panelHeight;
+const TIERS = [3, 4, 5, 6] as const;
 
-/** 8x8 mask: white dot in one corner, black elsewhere. */
+/** 8x8 mask: white dots in one corner, black elsewhere. */
 const mask = async () =>
   new Uint8Array(
     await sharp({ create: { width: 8, height: 8, channels: 3, background: "#000" } })
@@ -14,38 +15,62 @@ const mask = async () =>
       .toBuffer(),
   );
 
-const raw = (png: Buffer) => sharp(png).raw().toBuffer({ resolveWithObject: true });
+const raw = async (png: Buffer) => {
+  const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const at = (x: number, y: number) => Array.from(data.slice((y * info.width + x) * 4, (y * info.width + x) * 4 + 4));
+  return { data, info, at };
+};
 
-describe("renderColumnBackground", () => {
+describe("renderGlow", () => {
   test("has the requested size", async () => {
-    const meta = await sharp(await renderColumnBackground(4, W, H)).metadata();
-    expect([meta.width, meta.height]).toEqual([W, H]);
+    const meta = await sharp(await renderGlow(4, GEOMETRY)).metadata();
+    expect([meta.width, meta.height]).toEqual([GEOMETRY.width, GEOMETRY.height]);
   });
 
-  test("fades in from a transparent top", async () => {
-    const { data, info } = await raw(await renderColumnBackground(4, W, H));
-    const alphaAt = (y: number) => data[(y * info.width + 5) * info.channels + 3]!;
-    expect(alphaAt(0)).toBeLessThan(10); // gradient is sampled at pixel centres, so not exactly 0
-    expect(alphaAt(Math.round(H * 0.2))).toBeGreaterThan(alphaAt(H - 1)); // peak is stronger than the bottom
-    expect(alphaAt(H - 1)).toBeGreaterThan(0);
+  test("is strongest along the panel's edges and fades away from them", async () => {
+    const { at } = await raw(await renderGlow(4, GEOMETRY));
+    const alpha = (y: number) => at(5, y)[3]!;
+    expect(alpha(0)).toBeLessThan(10); // dark at the top (sampled at pixel centres, so not exactly 0)
+    expect(alpha(GEOMETRY.panelTop - 1)).toBeGreaterThan(alpha(GEOMETRY.panelTop - 40));
+    expect(alpha(GEOMETRY.panelTop - 40)).toBeGreaterThan(alpha(0));
+    expect(alpha(PANEL_BOTTOM)).toBeGreaterThan(alpha(PANEL_BOTTOM + 50));
+    expect(alpha(PANEL_BOTTOM + 50)).toBeGreaterThan(alpha(GEOMETRY.height - 1));
   });
 
   test("tiers have different colours", async () => {
     const colours = await Promise.all(
-      ([3, 4, 5, 6] as const).map(async (tier) => {
-        const { data, info } = await raw(await renderColumnBackground(tier, W, H));
-        const i = (Math.round(H * 0.2) * info.width + 5) * info.channels;
-        return [data[i], data[i + 1], data[i + 2]].join(",");
-      }),
+      TIERS.map(async (tier) => (await raw(await renderGlow(tier, GEOMETRY))).at(5, GEOMETRY.panelTop - 1).join(",")),
     );
     expect(new Set(colours).size).toBe(4);
   });
 
   test("the halftone mask changes only tiers that use it", async () => {
     const m = await mask();
-    for (const tier of [3, 4, 5, 6] as const) {
-      const without = (await raw(await renderColumnBackground(tier, W, H))).data;
-      const withMask = (await raw(await renderColumnBackground(tier, W, H, m))).data;
+    for (const tier of TIERS) {
+      const without = (await raw(await renderGlow(tier, GEOMETRY))).data;
+      const withMask = (await raw(await renderGlow(tier, GEOMETRY, m))).data;
+      expect(without.equals(withMask)).toBe(!TIER_STYLES[tier].halftone);
+    }
+  });
+});
+
+describe("renderPanelBackground", () => {
+  test("has the requested size and is opaque", async () => {
+    const { info, at } = await raw(await renderPanelBackground(4, 60, 200));
+    expect([info.width, info.height]).toEqual([60, 200]);
+    expect(at(5, 5)[3]).toBe(255);
+  });
+
+  test("runs from the top colour to the bottom colour", async () => {
+    const { at } = await raw(await renderPanelBackground(4, 60, 200));
+    expect(at(5, 0)[0]).toBeGreaterThan(at(5, 199)[0]!); // light grey fading darker
+  });
+
+  test("the halftone mask changes only tiers that use it", async () => {
+    const m = await mask();
+    for (const tier of TIERS) {
+      const without = (await raw(await renderPanelBackground(tier, 60, 200))).data;
+      const withMask = (await raw(await renderPanelBackground(tier, 60, 200, m))).data;
       expect(without.equals(withMask)).toBe(!TIER_STYLES[tier].halftone);
     }
   });

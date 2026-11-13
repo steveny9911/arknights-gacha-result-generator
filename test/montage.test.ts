@@ -1,18 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import sharp from "sharp";
 import {
-  ICON_SIZE,
-  ICON_TOP,
-  MONTAGE_HEIGHT,
+  CANVAS_HEIGHT,
+  COLUMN_WIDTH,
   MONTAGE_WIDTH_FOR,
-  PADDING,
-  PORTRAIT_HEIGHT,
-  PORTRAIT_TOP,
-  PORTRAIT_WIDTH,
-  STARS_HEIGHT,
+  PADDING_X,
+  PANEL_BOTTOM,
+  PANEL_HEIGHT,
+  PANEL_TOP,
   renderMontage,
   type MontageEntry,
 } from "../src/render/montage.ts";
+import type { Tier } from "../src/types.ts";
 
 type Rgb = [number, number, number];
 
@@ -25,12 +24,13 @@ const solid = async (w: number, h: number, rgb: Rgb) =>
 
 const STARS_RGB: Rgb = [250, 250, 0];
 const ICON_RGB: Rgb = [255, 255, 255];
+const STARS_HEIGHT = 30;
 
-const entry = async (portraitRgb: Rgb): Promise<MontageEntry> => ({
-  operator: { id: "char_x", name: "x", rarity: 4, profession: "CASTER", inHeadhunting: true },
-  portrait: await solid(PORTRAIT_WIDTH, PORTRAIT_HEIGHT, portraitRgb),
-  classIcon: await solid(ICON_SIZE, ICON_SIZE, ICON_RGB),
-  stars: await solid(100, 30, STARS_RGB),
+const entry = async (portraitRgb: Rgb, rarity: Tier = 4): Promise<MontageEntry> => ({
+  operator: { id: "char_x", name: "x", rarity, profession: "CASTER", inHeadhunting: true },
+  portrait: await solid(180, 360, portraitRgb),
+  classIcon: await solid(108, 109, ICON_RGB),
+  stars: await solid(100, STARS_HEIGHT, STARS_RGB),
 });
 
 /** RGB of one pixel of an encoded image. */
@@ -40,52 +40,53 @@ async function pixel(image: Uint8Array, x: number, y: number): Promise<number[]>
   return [data[i]!, data[i + 1]!, data[i + 2]!];
 }
 
+const columnLeft = (i: number) => PADDING_X + i * COLUMN_WIDTH;
+const columnCentre = (i: number) => columnLeft(i) + Math.floor(COLUMN_WIDTH / 2);
+
 describe("renderMontage", () => {
-  test("output has the expected dimensions", async () => {
+  test("ten columns make a 1920x1080 canvas", async () => {
     const entries = await Promise.all(Array.from({ length: 10 }, () => entry([200, 0, 0])));
     const meta = await sharp(await renderMontage(entries)).metadata();
+    expect([meta.width, meta.height]).toEqual([1920, 1080]);
     expect(meta.width).toBe(MONTAGE_WIDTH_FOR(10));
-    expect(meta.height).toBe(MONTAGE_HEIGHT);
+    expect(meta.height).toBe(CANVAS_HEIGHT);
     expect(meta.format).toBe("png");
   });
 
-  test("portraits sit in order and flush", async () => {
+  test("portraits fill their panels, in order and flush", async () => {
     const entries = [await entry([255, 0, 0]), await entry([0, 255, 0]), await entry([0, 0, 255])];
     const image = await renderMontage(entries);
-    const midY = PORTRAIT_TOP + PORTRAIT_HEIGHT / 2;
-    expect(await pixel(image, PADDING + 10, midY)).toEqual([255, 0, 0]);
-    expect(await pixel(image, PADDING + PORTRAIT_WIDTH + 10, midY)).toEqual([0, 255, 0]);
-    expect(await pixel(image, PADDING + 2 * PORTRAIT_WIDTH + 10, midY)).toEqual([0, 0, 255]);
-    expect(await pixel(image, PADDING + PORTRAIT_WIDTH - 1, midY)).toEqual([255, 0, 0]);
-    expect(await pixel(image, PADDING + PORTRAIT_WIDTH, midY)).toEqual([0, 255, 0]);
+    const midY = PANEL_TOP + PANEL_HEIGHT / 2; // between the stars and the icon
+    expect(await pixel(image, columnLeft(0) + 10, midY)).toEqual([255, 0, 0]);
+    expect(await pixel(image, columnLeft(1) + 10, midY)).toEqual([0, 255, 0]);
+    expect(await pixel(image, columnLeft(2) + 10, midY)).toEqual([0, 0, 255]);
+    expect(await pixel(image, columnLeft(1) - 1, midY)).toEqual([255, 0, 0]); // no gap
+    expect(await pixel(image, columnLeft(1), midY)).toEqual([0, 255, 0]);
   });
 
-  test("stars are centred above the portrait, bottom-aligned to the star row", async () => {
+  test("stars straddle the panel's top edge", async () => {
     const image = await renderMontage([await entry([255, 0, 0])]);
-    const centreX = PADDING + PORTRAIT_WIDTH / 2;
-    const bottom = PADDING + STARS_HEIGHT - 1; // last row of the star band
-    expect(await pixel(image, centreX, bottom)).toEqual(STARS_RGB);
-    expect(await pixel(image, centreX, bottom - 29)).toEqual(STARS_RGB); // 30px tall
-    // Outside the 100px-wide, 30px-tall star image the pixel is just the column background.
-    expect(await pixel(image, centreX, bottom - 30)).toEqual(await pixel(image, PADDING + 5, bottom - 30));
-    expect(await pixel(image, PADDING + 5, bottom)).not.toEqual(STARS_RGB);
+    const x = columnCentre(0);
+    expect(await pixel(image, x, PANEL_TOP - 5)).toEqual(STARS_RGB); // above the panel
+    expect(await pixel(image, x, PANEL_TOP + 5)).toEqual(STARS_RGB); // over the portrait
+    // Past the 30px-tall star image, in either direction, it's just glow or portrait.
+    expect(await pixel(image, x, PANEL_TOP - STARS_HEIGHT)).toEqual(await pixel(image, columnLeft(0) + 5, PANEL_TOP - STARS_HEIGHT));
+    expect(await pixel(image, x, PANEL_TOP + STARS_HEIGHT)).toEqual([255, 0, 0]);
   });
 
-  test("class icon tile is centred below the portrait", async () => {
+  test("the class icon tile straddles the panel's bottom edge", async () => {
     const image = await renderMontage([await entry([255, 0, 0])]);
-    const centreX = PADDING + PORTRAIT_WIDTH / 2;
-    expect(await pixel(image, centreX, ICON_TOP + ICON_SIZE / 2)).toEqual(ICON_RGB);
-    expect(await pixel(image, centreX, ICON_TOP - 2)).toEqual(await pixel(image, PADDING + 5, ICON_TOP - 2)); // gap shows only the column background
+    const x = columnCentre(0);
+    expect(await pixel(image, x, PANEL_BOTTOM - 30)).toEqual(ICON_RGB); // over the portrait
+    expect(await pixel(image, x, PANEL_BOTTOM + 30)).toEqual(ICON_RGB); // below the panel
   });
 
   test("each column is tinted by its operator's tier", async () => {
     const tiers = [3, 4, 5, 6] as const;
-    const entries = await Promise.all(
-      tiers.map(async (rarity) => ({ ...(await entry([0, 0, 0])), operator: { ...(await entry([0, 0, 0])).operator, rarity } })),
-    );
+    const entries = await Promise.all(tiers.map((tier) => entry([0, 0, 0], tier)));
     const image = await renderMontage(entries);
-    const y = MONTAGE_HEIGHT - 4; // below the icon, so only the background is visible
-    const colours = await Promise.all(tiers.map((_, i) => pixel(image, PADDING + i * PORTRAIT_WIDTH + 4, y)));
+    const y = PANEL_BOTTOM + 110; // below the icon, so only the glow is visible
+    const colours = await Promise.all(tiers.map((_, i) => pixel(image, columnLeft(i) + 4, y)));
     expect(new Set(colours.map((c) => c.join(","))).size).toBe(4);
     expect(await pixel(image, 2, y)).toEqual(await pixel(image, 2, 2)); // padding stays the plain canvas colour
   });

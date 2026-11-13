@@ -29,29 +29,30 @@ Icons are small; slice 4 will upscale them or draw them small. Switching sets is
 `bun scripts/fetch-images.ts [--all]` downloads and prints sizes.
 Open check: confirm 180x360 busts match the game's result cards.
 
-## Slice 4: montage renderer (`src/render/`) — STARS, TILES, COLUMN BACKGROUNDS DONE
+## Slice 4: montage renderer (`src/render/`) — DONE (matches the in-game layout)
 `renderMontage(entries, { format, halftoneMask })` -> PNG/WebP bytes with sharp. Takes image bytes only (no network).
-Per column: tier-coloured background, then white stars, 180x360 portrait, white class-icon tile.
-Columns are flush on a dark canvas. Layout constants are exported at the top of `montage.ts`.
+With 10 entries the canvas is 1920x1080, like the in-game result screen. Per column, bottom to top:
+glow, portrait panel, portrait (scaled up and cropped to the panel), white stars, class icon.
+The stars straddle the panel's top edge and the icon tile straddles its bottom edge, as in the game.
+All layout numbers are exported constants at the top of `montage.ts`, measured from the reference screenshot.
 
-Files: `montage.ts` (layout and compositing), `column-background.ts` (one tier's background, `TIER_STYLES` table).
-To restyle a tier or add one, edit `TIER_STYLES`. Colours for 3/4/6-star are sampled from the in-game screenshot;
-the 5-star gold is a guess because the sample had no 5-star column.
+Files: `montage.ts` (layout and compositing, one small helper per layer), `column-background.ts`
+(`renderGlow`, `renderPanelBackground`, and the `TIER_STYLES` table).
+To restyle a tier, edit `TIER_STYLES`; to change how the glow fades, edit `GLOW_ABOVE` / `GLOW_BELOW`.
+Colours for 3/4/6-star are sampled from the screenshot; 5-star (gold glow, grey panel) is a guess.
 
 Assets (all from ArknightsAssets2 `cn`, under `assets/dyn/arts/`):
-- **Stars:** `rarity_hub/rarity_N.png`, white with a drop shadow, N = tier - 1 (so `rarity_5` is six stars; max 175x47).
-  The `gacha_detail_hub/star_N.png` set is yellow and doesn't match the in-game result screen.
-- **Class icon tile:** `profession_large_hub/icon_profession_<class>_large_white.png`, black glyph on a white tile with a
-  shadow, 108x109.
-- **Halftone mask:** `[pack]cmgachapool/rgba/light_halftone_mask.png` (128x128), used as the opacity of an orange layer
-  for 6-star columns.
+- **Stars:** `rarity_hub/rarity_N.png`, white with a drop shadow, N = tier - 1 (so `rarity_5` is six stars; 175x47).
+- **Class icon tile:** `profession_large_hub/icon_profession_<class>_large_white.png`, 108x109 (a 90x90 white tile plus
+  shadow), drawn at 1.5x.
+- **Halftone mask:** `[pack]cmgachapool/rgba/light_halftone_mask.png` (128x128). Used as the opacity of an orange layer:
+  once over the 6-star panel, and tiled finely over the 6-star glow.
+- The grey portrait panel and the glow gradients are drawn in code; no single image for them exists in the repos.
 
-Found but not used (possible future glow work):
-- `[pack]cmgachapool/rgba/light_effect_flow.png` (flowing noise), `light_effect_solid.png`, `pack3/light_effect.png`
-  (orange dotted blob), `pack2/addtive_back.png` (horizontal flare).
-- `gacha_detail_hub/detail_char_back_{4,5,6}.png`, `*_port.png`: glowing tier-coloured frames from the operator detail view.
-
-Not done: bright glow/light streaks behind 5- and 6-star columns, optional fixed 16:9 canvas.
+Known differences from the game: no sparkle particles, no bright glow blob, the glow is a plain gradient plus dots,
+and portraits are upscaled 1.5x from 180x360 so they are a little soft.
+Unused assets that might help later: `rgba/light_effect_flow.png` (flowing noise), `light_effect_solid.png`,
+`pack3/light_effect.png` (orange dotted blob), `pack2/addtive_back.png` (horizontal flare).
 `bun run cli -- --seed 52` gives a reproducible pull with 6-, 5-, 4- and 3-star operators for checking looks.
 
 ## Slice 5: public API + CLI (`src/index.ts`, `src/cli.ts`)
