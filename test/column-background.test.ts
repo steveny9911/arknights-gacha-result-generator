@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import sharp from "sharp";
-import { TIER_STYLES, renderGlow, renderPanelBackground } from "../src/render/column-background.ts";
+import { seededRng } from "../src/gacha/seeded-rng.ts";
+import { TIER_STYLES, renderGlow, renderPanelBackground, renderSparkles } from "../src/render/column-background.ts";
 
 const GEOMETRY = { width: 60, height: 400, panelTop: 100, panelHeight: 200 };
 const PANEL_BOTTOM = GEOMETRY.panelTop + GEOMETRY.panelHeight;
@@ -86,5 +87,40 @@ describe("renderPanelBackground", () => {
       const withMask = (await raw(await renderPanelBackground(tier, 60, 200, { halftoneMask: m }))).data;
       expect(without.equals(withMask)).toBe(!TIER_STYLES[tier].halftone);
     }
+  });
+});
+
+describe("renderSparkles", () => {
+  const opaquePixels = async (png: Buffer) => {
+    const { data, info } = await raw(png);
+    const rows = new Set<number>();
+    for (let i = 3; i < data.length; i += 4) if (data[i]! > 0) rows.add(Math.floor(i / 4 / info.width));
+    return rows;
+  };
+
+  test("has the column's size", async () => {
+    const meta = await sharp(await renderSparkles(6, GEOMETRY, seededRng(1))).metadata();
+    expect([meta.width, meta.height]).toEqual([GEOMETRY.width, GEOMETRY.height]);
+  });
+
+  test("3-star has none, higher tiers have some", async () => {
+    expect((await opaquePixels(await renderSparkles(3, GEOMETRY, seededRng(1)))).size).toBe(0);
+    for (const tier of [4, 5, 6] as const) {
+      expect((await opaquePixels(await renderSparkles(tier, GEOMETRY, seededRng(1)))).size).toBeGreaterThan(0);
+    }
+  });
+
+  test("stay out of the panel's middle", async () => {
+    const rows = await opaquePixels(await renderSparkles(6, GEOMETRY, seededRng(1)));
+    const margin = 5; // the soft edge of a sparkle on the boundary can spill a few pixels
+    for (const y of rows) {
+      expect(y < GEOMETRY.panelTop + margin || y >= PANEL_BOTTOM - margin).toBe(true);
+    }
+  });
+
+  test("the same seed gives the same sparkles, another seed different ones", async () => {
+    const a = await renderSparkles(6, GEOMETRY, seededRng(1));
+    expect(a.equals(await renderSparkles(6, GEOMETRY, seededRng(1)))).toBe(true);
+    expect(a.equals(await renderSparkles(6, GEOMETRY, seededRng(2)))).toBe(false);
   });
 });

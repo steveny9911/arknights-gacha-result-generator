@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import sharp from "sharp";
+import { seededRng } from "../src/gacha/seeded-rng.ts";
 import {
   CANVAS_HEIGHT,
   COLUMN_WIDTH,
@@ -9,12 +10,17 @@ import {
   PANEL_BOTTOM,
   PANEL_HEIGHT,
   PANEL_TOP,
-  renderMontage,
+  renderMontage as render,
   type MontageEntry,
+  type MontageOptions,
 } from "../src/render/montage.ts";
 import type { Tier } from "../src/types.ts";
 
 type Rgb = [number, number, number];
+
+/** renderMontage with a fixed seed, so the random background and sparkles are the same every run. */
+const renderMontage = (entries: readonly MontageEntry[], opts: MontageOptions = {}) =>
+  render(entries, { rng: seededRng(7), ...opts });
 
 const solid = async (w: number, h: number, rgb: Rgb) =>
   new Uint8Array(
@@ -89,17 +95,26 @@ describe("renderMontage", () => {
     const y = PANEL_BOTTOM + 110; // below the icon, so only the glow is visible
     const colours = await Promise.all(tiers.map((_, i) => pixel(image, columnLeft(i) + 4, y)));
     expect(new Set(colours.map((c) => c.join(","))).size).toBe(4);
-    expect(await pixel(image, 2, y)).toEqual(await pixel(image, 2, 2)); // padding stays the plain canvas colour
+    expect(await pixel(image, 2, y)).toEqual(await pixel(image, PADDING_X - 3, y)); // padding is just the canvas
   });
 
   test("a seam of canvas shows between neighbouring glows", async () => {
     const image = await renderMontage([await entry([0, 0, 0], 4), await entry([0, 0, 0], 4)]);
     const y = PANEL_TOP - 20; // glow is strong here
-    const canvas = await pixel(image, 2, 2);
+    const canvas = await pixel(image, 2, y); // the gradient only varies with y, so this is the canvas at the seam's row
     const seam = Array.from({ length: GLOW_GAP }, (_, i) => columnLeft(1) - GLOW_GAP + 1 + i);
     for (const x of seam) expect(await pixel(image, x, y)).toEqual(canvas);
     expect(await pixel(image, seam[0]! - 1, y)).not.toEqual(canvas); // glow right up to the seam
     expect(await pixel(image, seam.at(-1)! + 1, y)).not.toEqual(canvas);
+  });
+
+  test("the same seed gives the same image and another seed a different one", async () => {
+    const entries = [await entry([0, 0, 0], 6), await entry([0, 0, 0], 4)];
+    const a = await render(entries, { rng: seededRng(1) });
+    const b = await render(entries, { rng: seededRng(1) });
+    const c = await render(entries, { rng: seededRng(2) });
+    expect(Buffer.from(a).equals(Buffer.from(b))).toBe(true);
+    expect(Buffer.from(a).equals(Buffer.from(c))).toBe(false);
   });
 
   test("resizes portraits that are not 180x360", async () => {

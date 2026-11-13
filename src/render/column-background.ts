@@ -3,7 +3,7 @@
 //   panel - the backdrop directly behind the portrait: the game's panel image if given, else drawn in code
 // Tiers with `halftone` also get a dot pattern, which needs a mask image. Returns PNG bytes; no network.
 import sharp from "sharp";
-import type { Tier } from "../types.ts";
+import type { Rng, Tier } from "../types.ts";
 
 interface TierStyle {
   /** Glow colour. */
@@ -17,14 +17,16 @@ interface TierStyle {
   panelTint?: string;
   /** Overlay a halftone dot pattern on the glow and the panel. */
   halftone: boolean;
+  /** How many sparkles to scatter in one column's glow. */
+  sparkles: number;
 }
 
 /** Colours are sampled from the in-game result screen; 5-star is a guess (not in the sample). */
 export const TIER_STYLES: Readonly<Record<Tier, TierStyle>> = {
-  3: { glow: "#9a9a9a", glowStrength: 0.12, panelTop: "#313131", panelBottom: "#313131", halftone: false },
-  4: { glow: "#9c8aee", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", halftone: false },
-  5: { glow: "#ffd23c", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", panelTint: "#ffd23c", halftone: false },
-  6: { glow: "#ffb52e", glowStrength: 0.95, panelTop: "#38392a", panelBottom: "#26261f", halftone: true },
+  3: { glow: "#9a9a9a", glowStrength: 0.12, panelTop: "#313131", panelBottom: "#313131", halftone: false, sparkles: 0 },
+  4: { glow: "#9c8aee", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", halftone: false, sparkles: 22 },
+  5: { glow: "#ffd23c", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", panelTint: "#ffd23c", halftone: false, sparkles: 36 },
+  6: { glow: "#ffb52e", glowStrength: 0.95, panelTop: "#38392a", panelBottom: "#26261f", halftone: true, sparkles: 60 },
 };
 
 /**
@@ -34,6 +36,9 @@ export const TIER_STYLES: Readonly<Record<Tier, TierStyle>> = {
  */
 const GLOW_ABOVE: ReadonlyArray<readonly [number, number]> = [[1, 0], [0.55, 0.15], [0.2, 0.75], [0, 1]];
 const GLOW_BELOW: ReadonlyArray<readonly [number, number]> = [[0, 1], [0.35, 0.8], [0.75, 0.2], [1, 0.05]];
+/** Sparkle size (radius) and brightness ranges, in pixels and opacity. */
+const SPARKLE_RADIUS = { min: 1, max: 3 };
+const SPARKLE_OPACITY = { min: 0.4, max: 0.95 };
 /** Size of one repeat of the halftone mask over the glow, in pixels. */
 const GLOW_DOT_TILE = 24;
 /** Dots over the glow are fainter than the glow itself. */
@@ -150,4 +155,31 @@ async function panelFromImage(style: TierStyle, image: Uint8Array, width: number
     .composite([{ input: await sharp(tint).png().toBuffer(), blend: "multiply" }])
     .png()
     .toBuffer();
+}
+
+/**
+ * Small bright specks scattered through the glow (never over the panel), denser near the panel's edges.
+ * Positions are random, so call this once per column with the render's `rng`.
+ */
+export async function renderSparkles(
+  tier: Tier,
+  { width, height, panelTop, panelHeight }: ColumnGeometry,
+  rng: Rng,
+): Promise<Buffer> {
+  const panelBottom = panelTop + panelHeight;
+  const between = (range: { min: number; max: number }) => range.min + rng() * (range.max - range.min);
+
+  const specks = Array.from({ length: TIER_STYLES[tier].sparkles }, () => {
+    const above = rng() < 0.5;
+    const distance = rng() ** 2 * (above ? panelTop : height - panelBottom); // squared: bunched near the panel
+    const y = above ? panelTop - distance : panelBottom + distance;
+    return `<circle cx="${(rng() * width).toFixed(1)}" cy="${y.toFixed(1)}" r="${between(SPARKLE_RADIUS).toFixed(2)}"` +
+      ` fill="#fff" fill-opacity="${between(SPARKLE_OPACITY).toFixed(2)}"/>`;
+  });
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <defs><filter id="soft"><feGaussianBlur stdDeviation="0.6"/></filter></defs>
+    <g filter="url(#soft)">${specks.join("")}</g>
+  </svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
 }

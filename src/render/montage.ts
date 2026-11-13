@@ -1,9 +1,11 @@
 // SLICE 4: compose the ten-pull image with sharp.
-// Each column is drawn bottom to top: glow, portrait panel, portrait, stars, class icon.
+// Each column is drawn bottom to top: glow, sparkles, portrait panel, portrait, stars, class icon.
+// The canvas gradient and the sparkles are random, so pass a seeded `rng` for a reproducible image.
 // Pure function of (operators, image bytes) -> encoded image bytes; no network.
 import sharp, { type OverlayOptions } from "sharp";
-import type { Operator, Tier } from "../types.ts";
-import { renderGlow, renderPanelBackground } from "./column-background.ts";
+import type { Operator, Rng, Tier } from "../types.ts";
+import { renderBackground } from "./background.ts";
+import { renderGlow, renderPanelBackground, renderSparkles } from "./column-background.ts";
 
 export interface MontageEntry {
   operator: Operator;
@@ -21,6 +23,8 @@ export interface MontageOptions {
   halftoneMask?: Uint8Array;
   /** The game's portrait-panel images by tier. A tier without one gets a drawn gradient panel. */
   panelImages?: Partial<Record<Tier, Uint8Array>>;
+  /** Randomness for the background gradient and sparkles. Default Math.random. */
+  rng?: Rng;
 }
 
 /**
@@ -34,7 +38,6 @@ export const CANVAS_HEIGHT = 1080;
 export const PANEL_TOP = 250;
 export const PANEL_HEIGHT = 550;
 export const PANEL_BOTTOM = PANEL_TOP + PANEL_HEIGHT;
-export const BACKGROUND = "#141414";
 /** Glows are narrower than their column, so a seam of the canvas shows between neighbours. */
 export const GLOW_GAP = 3;
 
@@ -71,26 +74,22 @@ export async function renderMontage(
     }),
   );
 
+  const rng = opts.rng ?? Math.random;
   const layers: OverlayOptions[] = [];
   for (const [i, entry] of entries.entries()) {
     const left = PADDING_X + i * COLUMN_WIDTH;
     const tier = entry.operator.rarity;
 
-    layers.push({ input: await glowFor(tier), left: left + Math.floor(GLOW_GAP / 2), top: 0 });
+    const glowLeft = left + Math.floor(GLOW_GAP / 2);
+    layers.push({ input: await glowFor(tier), left: glowLeft, top: 0 });
+    layers.push({ input: await renderSparkles(tier, GLOW, rng), left: glowLeft, top: 0 });
     layers.push({ input: await panelFor(tier), left, top: PANEL_TOP });
     layers.push(await portraitLayer(entry.portrait, left));
     layers.push(await starsLayer(entry.stars, left));
     layers.push(await iconLayer(entry.classIcon, left));
   }
 
-  const canvas = sharp({
-    create: {
-      width: MONTAGE_WIDTH_FOR(entries.length),
-      height: CANVAS_HEIGHT,
-      channels: 3,
-      background: BACKGROUND,
-    },
-  }).composite(layers);
+  const canvas = sharp(await renderBackground(MONTAGE_WIDTH_FOR(entries.length), CANVAS_HEIGHT, rng)).composite(layers);
 
   const encoded = opts.format === "webp" ? canvas.webp() : canvas.png();
   return new Uint8Array(await encoded.toBuffer());

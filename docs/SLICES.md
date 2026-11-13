@@ -62,9 +62,16 @@ What the search found (a path-only clone of every repo, then grep; nothing was d
   not exported in ArknightsAssets2 (cn or en), ArknightsAssets, fexli, yuanyan3060, Aceship or Arknights-Base.
   If someone has it, we can cut the regions out using the coordinates in the atlas file.
 - The stage background behind the columns (dark floor with reflections and silhouettes) is not an image in any repo; it
-  looks like part of the Spine/3D scene. The canvas stays a plain dark colour.
+  looks like part of the Spine/3D scene. We draw a random dark gradient instead.
 
-Known differences from the game: no sparkle particles or bright glow blob, no 6-star panel art, no stage background,
+Randomness (stand-ins, because the exact glow and background art isn't available):
+- **Sparkles:** small soft specks scattered in each column's glow, never over the panel, denser near the panel edges.
+  Count per tier is `sparkles` in `TIER_STYLES` (0 / 22 / 36 / 60 for 3-6 star). Drawn per column so no two repeat.
+- **Background:** `render/background.ts`, a dark vertical gradient with a random hue.
+- Both use the `rng` option of `renderMontage`; `generateTenPullImage` passes the pull's `rng` on, so one seed
+  (`--seed N`) reproduces the pull and the whole image. Tests always pass a seeded rng.
+
+Known differences from the game: no bright glow blob, no 6-star panel art, no stage scene behind the columns,
 and portraits are upscaled 1.5x from 180x360 so they are a little soft.
 `bun run cli -- --seed 52` gives a reproducible pull with 6-, 5-, 4- and 3-star operators for checking looks.
 

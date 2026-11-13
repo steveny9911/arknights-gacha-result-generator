@@ -4,7 +4,7 @@ Generates an image of an Arknights 10-pull headhunting result: 10 operator portr
 
 ```
 bun install
-bun run cli -- --out out/pull.png   # add --seed N for a reproducible pull
+bun run cli -- --out out/pull.png   # add --seed N for a reproducible pull and image
 bun run web                         # slice 6
 bun test
 ```
