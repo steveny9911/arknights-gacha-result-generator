@@ -24,7 +24,9 @@ See [docs/SLICES.md](docs/SLICES.md) for the build order.
 | Path | Role |
 | --- | --- |
 | `src/gacha/` | Pure algorithm (slice 1) |
-| `src/data/` | `DataProvider` interface, GitHub provider, banner pool (slices 2-3) |
-| `src/render/` | sharp montage (slice 4) |
+| `src/data/` | `DataProvider` interface, GitHub provider with disk cache, banner pool (slices 2-3) |
+| `src/render/` | sharp montage: layout, tier glows and panels, sparkles, background (slice 4) |
 | `src/index.ts` | Public API (slice 5) |
 | `src/cli.ts`, `web/` | Frontends over the public API |
+| `scripts/` | Manual checks against live data |
+| `docs/SLICES.md` | Status, decisions, asset findings, known issues |
