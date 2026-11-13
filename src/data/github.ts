@@ -4,11 +4,12 @@
 //                                         assets/dyn/arts/profession_large_hub/
 //                                         assets/dyn/arts/rarity_hub/
 //                                         assets/dyn/arts/[pack]cmgachapool/rgba/
+//                                         assets/dyn/ui/recruit/gacha_result/
 // Downloads are cached on disk under `cacheDir` so repeat runs are offline.
 import type { Operator, Profession, Tier } from "../types.ts";
 import { parseCharacterTable } from "./character-table.ts";
 import { fetchCached } from "./fetch-cache.ts";
-import { classIconFile, pickPortraitFile, starsFile } from "./images.ts";
+import { classIconFile, panelImageFile, pickPortraitFile, starsFile } from "./images.ts";
 import type { DataProvider } from "./provider.ts";
 
 const CHARACTER_TABLE_URL =
@@ -19,6 +20,7 @@ const ASSETS_BRANCH = "cn";
 const PORTRAIT_DIR = "assets/dyn/arts/charportraits";
 const ICON_DIR = "assets/dyn/arts/profession_large_hub";
 const STARS_DIR = "assets/dyn/arts/rarity_hub";
+const RESULT_DIR = "assets/dyn/ui/recruit/gacha_result";
 const EFFECTS_DIR = "assets/dyn/arts/[pack]cmgachapool/rgba";
 const HALFTONE_FILE = "light_halftone_mask.png";
 
@@ -64,6 +66,11 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
     getStars(tier: Tier) {
       const file = starsFile(tier);
       return fetchCached(rawUrl(STARS_DIR, file), `${cacheDir}/stars/${file}`);
+    },
+    async getPanelImage(tier: Tier) {
+      const file = panelImageFile(tier);
+      if (!file) return undefined;
+      return fetchCached(rawUrl(RESULT_DIR, file), `${cacheDir}/panels/${file}`);
     },
     getHalftoneMask() {
       return fetchCached(rawUrl(EFFECTS_DIR, HALFTONE_FILE), `${cacheDir}/effects/${HALFTONE_FILE}`);

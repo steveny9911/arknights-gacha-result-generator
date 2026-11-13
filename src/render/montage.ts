@@ -19,6 +19,8 @@ export interface MontageOptions {
   format?: "png" | "webp";
   /** Halftone dot mask for the 6-star backgrounds. Without it that tier gets plain gradients. */
   halftoneMask?: Uint8Array;
+  /** The game's portrait-panel images by tier. A tier without one gets a drawn gradient panel. */
+  panelImages?: Partial<Record<Tier, Uint8Array>>;
 }
 
 /**
@@ -33,6 +35,8 @@ export const PANEL_TOP = 250;
 export const PANEL_HEIGHT = 550;
 export const PANEL_BOTTOM = PANEL_TOP + PANEL_HEIGHT;
 export const BACKGROUND = "#141414";
+/** Glows are narrower than their column, so a seam of the canvas shows between neighbours. */
+export const GLOW_GAP = 3;
 
 /** The icon image is 108x109 with a 90x90 white tile at (9, 0) and a shadow; scale it up to a ~134px tile. */
 export const ICON_SCALE = 1.5;
@@ -41,7 +45,7 @@ const ICON_TILE_CENTRE = { x: 53.5, y: 44.5 }; // centre of the white tile insid
 
 export const MONTAGE_WIDTH_FOR = (count: number) => PADDING_X * 2 + COLUMN_WIDTH * count;
 
-const COLUMN = { width: COLUMN_WIDTH, height: CANVAS_HEIGHT, panelTop: PANEL_TOP, panelHeight: PANEL_HEIGHT };
+const GLOW = { width: COLUMN_WIDTH - GLOW_GAP, height: CANVAS_HEIGHT, panelTop: PANEL_TOP, panelHeight: PANEL_HEIGHT };
 
 /** Compute `make(tier)` once per tier and share the result. */
 function memoByTier<T>(make: (tier: Tier) => Promise<T>): (tier: Tier) => Promise<T> {
@@ -59,9 +63,12 @@ export async function renderMontage(
 ): Promise<Uint8Array> {
   if (entries.length === 0) throw new RangeError("entries must not be empty");
 
-  const glowFor = memoByTier((tier) => renderGlow(tier, COLUMN, opts.halftoneMask));
+  const glowFor = memoByTier((tier) => renderGlow(tier, GLOW, opts.halftoneMask));
   const panelFor = memoByTier((tier) =>
-    renderPanelBackground(tier, COLUMN_WIDTH, PANEL_HEIGHT, opts.halftoneMask),
+    renderPanelBackground(tier, COLUMN_WIDTH, PANEL_HEIGHT, {
+      image: opts.panelImages?.[tier],
+      halftoneMask: opts.halftoneMask,
+    }),
   );
 
   const layers: OverlayOptions[] = [];
@@ -69,7 +76,7 @@ export async function renderMontage(
     const left = PADDING_X + i * COLUMN_WIDTH;
     const tier = entry.operator.rarity;
 
-    layers.push({ input: await glowFor(tier), left, top: 0 });
+    layers.push({ input: await glowFor(tier), left: left + Math.floor(GLOW_GAP / 2), top: 0 });
     layers.push({ input: await panelFor(tier), left, top: PANEL_TOP });
     layers.push(await portraitLayer(entry.portrait, left));
     layers.push(await starsLayer(entry.stars, left));

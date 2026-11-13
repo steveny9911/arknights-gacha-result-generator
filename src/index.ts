@@ -5,7 +5,7 @@ import { buildBanner } from "./data/pool.ts";
 import { createGithubProvider } from "./data/github.ts";
 import type { DataProvider } from "./data/provider.ts";
 import { renderMontage, type MontageOptions } from "./render/montage.ts";
-import type { Banner, Rng, TenPullResult } from "./types.ts";
+import type { Banner, Rng, TenPullResult, Tier } from "./types.ts";
 
 export interface GenerateOptions extends MontageOptions {
   /** Defaults to a standard banner built from the provider's operator table. */
@@ -20,6 +20,13 @@ export interface GenerateOptions extends MontageOptions {
 export interface GenerateResult {
   image: Uint8Array;
   result: TenPullResult;
+}
+
+/** Panel images for every tier that has one. */
+async function loadPanelImages(provider: DataProvider): Promise<Partial<Record<Tier, Uint8Array>>> {
+  const tiers: Tier[] = [3, 4, 5, 6];
+  const images = await Promise.all(tiers.map((tier) => provider.getPanelImage(tier)));
+  return Object.fromEntries(tiers.flatMap((tier, i) => (images[i] ? [[tier, images[i]]] : [])));
 }
 
 export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<GenerateResult> {
@@ -43,7 +50,8 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
   );
 
   const halftoneMask = opts.halftoneMask ?? (await provider.getHalftoneMask());
-  const image = await renderMontage(entries, { ...opts, halftoneMask });
+  const panelImages = opts.panelImages ?? (await loadPanelImages(provider));
+  const image = await renderMontage(entries, { ...opts, halftoneMask, panelImages });
   return { image, result };
 }
 

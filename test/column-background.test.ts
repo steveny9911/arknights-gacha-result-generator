@@ -66,11 +66,24 @@ describe("renderPanelBackground", () => {
     expect(at(5, 0)[0]).toBeGreaterThan(at(5, 199)[0]!); // light grey fading darker
   });
 
+  test("uses the game's panel image, stretched to fit", async () => {
+    const red = new Uint8Array(await sharp({ create: { width: 140, height: 388, channels: 3, background: "#ff0000" } }).png().toBuffer());
+    const { info, at } = await raw(await renderPanelBackground(4, 60, 200, { image: red }));
+    expect([info.width, info.height]).toEqual([60, 200]);
+    expect(at(30, 100)).toEqual([255, 0, 0, 255]);
+  });
+
+  test("tints the 5-star panel image (it is white) but not the others", async () => {
+    const white = new Uint8Array(await sharp({ create: { width: 140, height: 388, channels: 3, background: "#ffffff" } }).png().toBuffer());
+    expect((await raw(await renderPanelBackground(4, 20, 20, { image: white }))).at(5, 5)).toEqual([255, 255, 255, 255]);
+    expect((await raw(await renderPanelBackground(5, 20, 20, { image: white }))).at(5, 5)).toEqual([255, 210, 60, 255]);
+  });
+
   test("the halftone mask changes only tiers that use it", async () => {
     const m = await mask();
     for (const tier of TIERS) {
       const without = (await raw(await renderPanelBackground(tier, 60, 200))).data;
-      const withMask = (await raw(await renderPanelBackground(tier, 60, 200, m))).data;
+      const withMask = (await raw(await renderPanelBackground(tier, 60, 200, { halftoneMask: m }))).data;
       expect(without.equals(withMask)).toBe(!TIER_STYLES[tier].halftone);
     }
   });

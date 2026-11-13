@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { classIconFile, pickPortraitFile, starsFile } from "../src/data/images.ts";
+import { classIconFile, panelImageFile, pickPortraitFile, starsFile } from "../src/data/images.ts";
 
 describe("pickPortraitFile", () => {
   const files = new Set([
@@ -26,6 +26,13 @@ describe("pickPortraitFile", () => {
 test("classIconFile lowercases the profession and picks the white-tile variant", () => {
   expect(classIconFile("CASTER")).toBe("icon_profession_caster_large_white.png");
   expect(classIconFile("PIONEER")).toBe("icon_profession_pioneer_large_white.png");
+});
+
+test("panelImageFile has art for 3-5 star only", () => {
+  expect(panelImageFile(3)).toBe("back_low_1_3.png");
+  expect(panelImageFile(4)).toBe("back_four.png");
+  expect(panelImageFile(5)).toBe("back_five.png");
+  expect(panelImageFile(6)).toBeUndefined();
 });
 
 test("starsFile is indexed from zero", () => {

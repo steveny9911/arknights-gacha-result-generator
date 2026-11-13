@@ -41,18 +41,31 @@ Files: `montage.ts` (layout and compositing, one small helper per layer), `colum
 To restyle a tier, edit `TIER_STYLES`; to change how the glow fades, edit `GLOW_ABOVE` / `GLOW_BELOW`.
 Colours for 3/4/6-star are sampled from the screenshot; 5-star (gold glow, grey panel) is a guess.
 
-Assets (all from ArknightsAssets2 `cn`, under `assets/dyn/arts/`):
-- **Stars:** `rarity_hub/rarity_N.png`, white with a drop shadow, N = tier - 1 (so `rarity_5` is six stars; 175x47).
-- **Class icon tile:** `profession_large_hub/icon_profession_<class>_large_white.png`, 108x109 (a 90x90 white tile plus
+Assets (all from ArknightsAssets2 `cn`):
+- **Stars:** `arts/rarity_hub/rarity_N.png`, white with a drop shadow, N = tier - 1 (`rarity_5` is six stars; 175x47).
+  Visible size matches the screenshot at 1:1. The result screen's own `ui/recruit/gacha_result/star_N.png` (36-127 x 34)
+  is also white; it is smaller, so it would need ~1.25x scaling. Not used.
+- **Class icon tile:** `arts/profession_large_hub/icon_profession_<class>_large_white.png`, 108x109 (a 90x90 tile plus
   shadow), drawn at 1.5x.
-- **Halftone mask:** `[pack]cmgachapool/rgba/light_halftone_mask.png` (128x128). Used as the opacity of an orange layer:
-  once over the 6-star panel, and tiled finely over the 6-star glow.
-- The grey portrait panel and the glow gradients are drawn in code; no single image for them exists in the repos.
+- **Portrait panels (the game's own art):** `ui/recruit/gacha_result/back_low_1_3.png` (3-star and below, dark),
+  `back_four.png` (4-star, grey to lavender with sparkles), `back_five.png` (white sparkle gradient; we multiply it by
+  gold for 5-star, which is a guess). All are 140x388 with the real 122x369 panel at (9, 0) and a drop-shadow margin;
+  we crop to the panel, then stretch to the column (1:3, like the screenshot).
+- **6-star panel and all glows:** NOT available as images (see below), so they are drawn in code, using
+  `arts/[pack]cmgachapool/rgba/light_halftone_mask.png` for the dots.
+- Each glow is 3px narrower than its column (`GLOW_GAP`), leaving the seam between glows seen in the game.
 
-Known differences from the game: no sparkle particles, no bright glow blob, the glow is a plain gradient plus dots,
+What the search found (a path-only clone of every repo, then grep; nothing was downloaded in bulk):
+- The result screen is `ArknightsAssets2/assets/dyn/ui/recruit/gacha_result/` (older repo: `.../recruit_ten_result_state/`).
+- The glow columns and 6-star panel are almost certainly `sprite_rare_1/4/5/6` (337x473) in the Spine atlas
+  `assets/dyn/prefabs/gacha/gacha_phase_0/gacha.atlas` (+ `gacha.skel`). The atlas page `gacha.png` (1024x1024) is
+  not exported in ArknightsAssets2 (cn or en), ArknightsAssets, fexli, yuanyan3060, Aceship or Arknights-Base.
+  If someone has it, we can cut the regions out using the coordinates in the atlas file.
+- The stage background behind the columns (dark floor with reflections and silhouettes) is not an image in any repo; it
+  looks like part of the Spine/3D scene. The canvas stays a plain dark colour.
+
+Known differences from the game: no sparkle particles or bright glow blob, no 6-star panel art, no stage background,
 and portraits are upscaled 1.5x from 180x360 so they are a little soft.
-Unused assets that might help later: `rgba/light_effect_flow.png` (flowing noise), `light_effect_solid.png`,
-`pack3/light_effect.png` (orange dotted blob), `pack2/addtive_back.png` (horizontal flare).
 `bun run cli -- --seed 52` gives a reproducible pull with 6-, 5-, 4- and 3-star operators for checking looks.
 
 ## Slice 5: public API + CLI (`src/index.ts`, `src/cli.ts`)

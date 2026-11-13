@@ -3,6 +3,7 @@ import sharp from "sharp";
 import {
   CANVAS_HEIGHT,
   COLUMN_WIDTH,
+  GLOW_GAP,
   MONTAGE_WIDTH_FOR,
   PADDING_X,
   PANEL_BOTTOM,
@@ -89,6 +90,16 @@ describe("renderMontage", () => {
     const colours = await Promise.all(tiers.map((_, i) => pixel(image, columnLeft(i) + 4, y)));
     expect(new Set(colours.map((c) => c.join(","))).size).toBe(4);
     expect(await pixel(image, 2, y)).toEqual(await pixel(image, 2, 2)); // padding stays the plain canvas colour
+  });
+
+  test("a seam of canvas shows between neighbouring glows", async () => {
+    const image = await renderMontage([await entry([0, 0, 0], 4), await entry([0, 0, 0], 4)]);
+    const y = PANEL_TOP - 20; // glow is strong here
+    const canvas = await pixel(image, 2, 2);
+    const seam = Array.from({ length: GLOW_GAP }, (_, i) => columnLeft(1) - GLOW_GAP + 1 + i);
+    for (const x of seam) expect(await pixel(image, x, y)).toEqual(canvas);
+    expect(await pixel(image, seam[0]! - 1, y)).not.toEqual(canvas); // glow right up to the seam
+    expect(await pixel(image, seam.at(-1)! + 1, y)).not.toEqual(canvas);
   });
 
   test("resizes portraits that are not 180x360", async () => {

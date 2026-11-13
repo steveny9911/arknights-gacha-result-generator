@@ -1,6 +1,6 @@
 // Tier-coloured backgrounds for one result column, in two parts:
 //   glow  - full-height gradient that peaks at the panel's top and bottom edges
-//   panel - the backdrop directly behind the portrait
+//   panel - the backdrop directly behind the portrait: the game's panel image if given, else drawn in code
 // Tiers with `halftone` also get a dot pattern, which needs a mask image. Returns PNG bytes; no network.
 import sharp from "sharp";
 import type { Tier } from "../types.ts";
@@ -10,9 +10,11 @@ interface TierStyle {
   glow: string;
   /** Glow opacity at the panel edges, 0 to 1. */
   glowStrength: number;
-  /** Panel gradient colours, top to bottom. */
+  /** Fallback panel gradient colours, top to bottom, used when there is no panel image. */
   panelTop: string;
   panelBottom: string;
+  /** Multiply a panel image by this colour (the 5-star image is white and needs tinting). */
+  panelTint?: string;
   /** Overlay a halftone dot pattern on the glow and the panel. */
   halftone: boolean;
 }
@@ -21,7 +23,7 @@ interface TierStyle {
 export const TIER_STYLES: Readonly<Record<Tier, TierStyle>> = {
   3: { glow: "#9a9a9a", glowStrength: 0.12, panelTop: "#313131", panelBottom: "#313131", halftone: false },
   4: { glow: "#9c8aee", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", halftone: false },
-  5: { glow: "#ffd23c", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", halftone: false },
+  5: { glow: "#ffd23c", glowStrength: 0.9, panelTop: "#b9bac0", panelBottom: "#4a4a52", panelTint: "#ffd23c", halftone: false },
   6: { glow: "#ffb52e", glowStrength: 0.95, panelTop: "#38392a", panelBottom: "#26261f", halftone: true },
 };
 
@@ -104,14 +106,30 @@ export async function renderGlow(
   return sharp(gradient).composite([{ input: dots }]).png().toBuffer();
 }
 
-/** The backdrop behind a portrait: a vertical gradient, plus one halftone square at the top for dotted tiers. */
+/**
+ * The game's panel images are 140x388, but the panel itself is only the 122x369 area at (9, 0);
+ * the rest is a transparent margin holding the drop shadow. Crop to the panel before stretching.
+ */
+const PANEL_IMAGE_AREA = { left: 9, top: 0, width: 122, height: 369 };
+
+export interface PanelSources {
+  /** The game's panel image (140x388), stretched to fit. Without it the panel is a drawn gradient. */
+  image?: Uint8Array;
+  /** Halftone dot mask, for tiers that use dots. */
+  halftoneMask?: Uint8Array;
+}
+
+/** The backdrop behind a portrait. */
 export async function renderPanelBackground(
   tier: Tier,
   width: number,
   height: number,
-  halftoneMask?: Uint8Array,
+  { image, halftoneMask }: PanelSources = {},
 ): Promise<Buffer> {
   const style = TIER_STYLES[tier];
+  if (image) return panelFromImage(style, image, width, height);
+
+  // Drawn gradient, plus one halftone square at the top for dotted tiers.
   const base = sharp(
     verticalGradient(width, height, [
       [0, style.panelTop, 1],
@@ -122,4 +140,14 @@ export async function renderPanelBackground(
 
   const dots = await dotLayer(style.glow, halftoneMask, width);
   return base.composite([{ input: dots, left: 0, top: 0 }]).png().toBuffer();
+}
+
+async function panelFromImage(style: TierStyle, image: Uint8Array, width: number, height: number): Promise<Buffer> {
+  const panel = sharp(image).extract(PANEL_IMAGE_AREA).resize(width, height, { fit: "fill" });
+  if (!style.panelTint) return panel.png().toBuffer();
+  const tint = { create: { width, height, channels: 3 as const, background: style.panelTint } };
+  return panel
+    .composite([{ input: await sharp(tint).png().toBuffer(), blend: "multiply" }])
+    .png()
+    .toBuffer();
 }
