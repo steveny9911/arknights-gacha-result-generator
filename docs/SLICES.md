@@ -8,12 +8,15 @@ Pure functions, no I/O. Port `gacha.ts` and `gacha.test.ts` from the walkthrough
 `src/gacha/gacha.ts` (constants already in `constants.ts`).
 **Done when:** `bun test` passes, including the 20k-run statistics test.
 
-## Slice 2: operator data and banner pool (`src/data/pool.ts`, `src/data/github.ts`)
-Fetch `character_table.json` (Kengxxiao, zh_CN), cache it on disk, map `TIER_6` to 6,
-build `Operator` records and a `Banner` pool (`char_` prefix, not `isNotObtainable`).
-No rate-up: every operator in a tier is equally likely (out of scope for now).
-**Done when:** a script prints tier counts close to 141/201/62/17 and `buildBanner` returns all four tiers non-empty.
-Open check from the doc: validate the pool against a banner you know (event/shop-only operators leak in).
+## Slice 2: operator data and banner pool (`src/data/`) — DONE
+`fetchCached` downloads `character_table.json` (Kengxxiao, zh_CN) once into `cache/`.
+`parseCharacterTable` keeps `char_` ids with `isNotObtainable` false and tier 3-6, and flags
+`inHeadhunting` when `itemObtainApproach` starts with `招募寻访`. `buildBanner` groups flagged operators by tier.
+No rate-up: every operator in a tier is equally likely.
+Result on the 2026-11 table: 421 playable operators; pool 128 / 128 / 49 / 17 for tiers 6 / 5 / 4 / 3.
+`bun scripts/pool-stats.ts` prints these counts.
+Known limitation: limited-banner operators are in the pool (their approach is also `招募寻访`).
+Open check: compare the 5-star and 4-star lists against a banner you know.
 
 ## Slice 3: images (`src/data/github.ts`)
 `getPortrait` and `getClassIcon` from ArknightsAssets2 (cn). Pick one variant rule

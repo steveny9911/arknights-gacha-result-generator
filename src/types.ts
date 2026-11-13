@@ -22,6 +22,8 @@ export interface Operator {
   name: string;
   rarity: Tier;
   profession: Profession;
+  /** True if the operator is in the standard headhunting pool (not event/shop-only). */
+  inHeadhunting: boolean;
 }
 
 /** Operator ids available in each tier. No rate-up: every operator in a tier is equally likely. */
