@@ -18,11 +18,16 @@ Result on the 2026-11 table: 421 playable operators; pool 128 / 128 / 49 / 17 fo
 Known limitation: limited-banner operators are in the pool (their approach is also `招募寻访`).
 Open check: compare the 5-star and 4-star lists against a banner you know.
 
-## Slice 3: images (`src/data/github.ts`)
-`getPortrait` and `getClassIcon` from ArknightsAssets2 (cn). Pick one variant rule
-(`_2` if present, else `_1`; skip `#` skins), disk-cache downloads, normalise `#` vs `_` ids.
-**Done when:** you can fetch Amiya's portrait and a caster icon to `cache/` and open them.
-Open check: confirm 180x360 busts match the game's result cards, and pick one of the four class-icon sets.
+## Slice 3: images (`src/data/images.ts`, `src/data/github.ts`) — DONE
+Portraits: `<id>_2.png` if it exists, else `<id>_1.png` (skins use `#` and are never matched).
+The charportraits folder listing is fetched once (git trees API, one request) and cached in
+`cache/charportraits.json`; files are then cached under `cache/portraits/` and `cache/icons/`.
+Verified: all 322 headhunting operators resolve (305 use `_2`, 17 only `_1`) and every portrait is 180x360.
+Class icons use `profession_icons_v2_hub`: white glyph on transparent, 26x26. The older
+`profession_icons_hub` set has an opaque dark tile baked in, so it can't sit on a tier colour.
+Icons are small; slice 4 will upscale them or draw them small. Switching sets is a one-line change (`ICON_DIR`).
+`bun scripts/fetch-images.ts [--all]` downloads and prints sizes.
+Open check: confirm 180x360 busts match the game's result cards.
 
 ## Slice 4: montage renderer (`src/render/montage.ts`)
 `renderMontage(entries) -> PNG bytes` using sharp. Take images as bytes only (no network),
