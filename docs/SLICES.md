@@ -29,10 +29,14 @@ Icons are small; slice 4 will upscale them or draw them small. Switching sets is
 `bun scripts/fetch-images.ts [--all]` downloads and prints sizes.
 Open check: confirm 180x360 busts match the game's result cards.
 
-## Slice 4: montage renderer (`src/render/montage.ts`)
-`renderMontage(entries) -> PNG bytes` using sharp. Take images as bytes only (no network),
-so it is testable with fixture images. Tier-coloured border or stars, class icon under each portrait.
-**Done when:** a test renders 10 fixture entries and the output has the expected dimensions.
+## Slice 4: montage renderer (`src/render/montage.ts`) — BASICS DONE
+`renderMontage(entries, { format })` -> PNG/WebP bytes with sharp. Takes image bytes only (no network).
+Done so far: 10 portraits in a flush row (180x360, resized with `cover` if not), class icon (upscaled to 64x64)
+centred below each, dark background, padding. Layout constants are exported at the top of the file.
+Tested with generated fixture images (dimensions, column order, no gaps, icon position, webp, empty input).
+Reference look: the in-game result screenshot (1920x1080, tall tinted columns, star counts above, white icon tiles).
+Not yet done, in rough order: star counts above each portrait, tier-coloured column backgrounds/glow,
+icon tiles, fixed 16:9 canvas.
 
 ## Slice 5: public API + CLI (`src/index.ts`, `src/cli.ts`)
 Glue is written; make it work end to end and finalise the option surface
