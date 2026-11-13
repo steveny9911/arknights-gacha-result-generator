@@ -30,7 +30,8 @@ describe("renderBackground", () => {
     const level = async (y: number) => (await rgb(png, 10, y))[0]!;
     const floor = Math.max(...(await Promise.all([760, 790, 820, 850].map(level))));
     expect(await level(0)).toBeLessThan(5);
-    expect(floor).toBeGreaterThan(150);
+    expect(floor).toBeGreaterThan(60);
+    expect(floor).toBeLessThan(140); // the reflection stays subtle
     expect(await level(H - 1)).toBeLessThan(floor / 2);
     expect(await level(500)).toBeLessThan(floor / 4); // the middle stays dark
   });
