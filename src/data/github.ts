@@ -1,12 +1,13 @@
 // Default DataProvider.
 //   tables : Kengxxiao/ArknightsGameData  zh_CN/gamedata/excel/character_table.json
 //   images : ArknightsAssets2 (cn branch) assets/dyn/arts/charportraits/
-//                                         assets/dyn/arts/misc/profession_icons_v2_hub/
+//                                         assets/dyn/arts/profession_large_hub/
+//                                         assets/dyn/arts/rarity_hub/
 // Downloads are cached on disk under `cacheDir` so repeat runs are offline.
-import type { Operator, Profession } from "../types.ts";
+import type { Operator, Profession, Tier } from "../types.ts";
 import { parseCharacterTable } from "./character-table.ts";
 import { fetchCached } from "./fetch-cache.ts";
-import { classIconFile, pickPortraitFile } from "./images.ts";
+import { classIconFile, pickPortraitFile, starsFile } from "./images.ts";
 import type { DataProvider } from "./provider.ts";
 
 const CHARACTER_TABLE_URL =
@@ -15,7 +16,8 @@ const CHARACTER_TABLE_URL =
 const ASSETS_REPO = "ArknightsAssets/ArknightsAssets2";
 const ASSETS_BRANCH = "cn";
 const PORTRAIT_DIR = "assets/dyn/arts/charportraits";
-const ICON_DIR = "assets/dyn/arts/misc/profession_icons_v2_hub";
+const ICON_DIR = "assets/dyn/arts/profession_large_hub";
+const STARS_DIR = "assets/dyn/arts/rarity_hub";
 
 const rawUrl = (dir: string, file: string) =>
   `https://raw.githubusercontent.com/${ASSETS_REPO}/${ASSETS_BRANCH}/${dir}/${encodeURIComponent(file)}`;
@@ -55,6 +57,10 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
     getClassIcon(profession: Profession) {
       const file = classIconFile(profession);
       return fetchCached(rawUrl(ICON_DIR, file), `${cacheDir}/icons/${file}`);
+    },
+    getStars(tier: Tier) {
+      const file = starsFile(tier);
+      return fetchCached(rawUrl(STARS_DIR, file), `${cacheDir}/stars/${file}`);
     },
   };
 }

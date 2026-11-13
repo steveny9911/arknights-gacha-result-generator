@@ -1,5 +1,5 @@
 // SLICE 3: pure helpers that map operator ids / professions to ArknightsAssets2 file names.
-import type { Profession } from "../types.ts";
+import type { Profession, Tier } from "../types.ts";
 
 /**
  * Portrait file for an operator: `<id>_2.png` (elite 2 art) if it exists, else `<id>_1.png`.
@@ -14,7 +14,12 @@ export function pickPortraitFile(id: string, files: ReadonlySet<string>): string
   throw new Error(`No portrait found for ${id}`);
 }
 
-/** Class icon file, e.g. CASTER -> `icon_profession_caster.png`. */
+/** Class icon file (black glyph on a white tile), e.g. CASTER -> `icon_profession_caster_large_white.png`. */
 export function classIconFile(profession: Profession): string {
-  return `icon_profession_${profession.toLowerCase()}.png`;
+  return `icon_profession_${profession.toLowerCase()}_large_white.png`;
+}
+
+/** White star row for a tier. The files are indexed from 0, so `rarity_5.png` is six stars. */
+export function starsFile(tier: Tier): string {
+  return `rarity_${tier - 1}.png`;
 }

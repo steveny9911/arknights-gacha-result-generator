@@ -33,11 +33,12 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
     result.operators.map(async (id) => {
       const operator = operators[id];
       if (!operator) throw new Error(`Unknown operator id: ${id}`);
-      const [portrait, classIcon] = await Promise.all([
+      const [portrait, classIcon, stars] = await Promise.all([
         provider.getPortrait(id),
         provider.getClassIcon(operator.profession),
+        provider.getStars(operator.rarity),
       ]);
-      return { operator, portrait, classIcon };
+      return { operator, portrait, classIcon, stars };
     }),
   );
 

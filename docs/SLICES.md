@@ -29,14 +29,28 @@ Icons are small; slice 4 will upscale them or draw them small. Switching sets is
 `bun scripts/fetch-images.ts [--all]` downloads and prints sizes.
 Open check: confirm 180x360 busts match the game's result cards.
 
-## Slice 4: montage renderer (`src/render/montage.ts`) — BASICS DONE
+## Slice 4: montage renderer (`src/render/montage.ts`) — STARS + TILES DONE
 `renderMontage(entries, { format })` -> PNG/WebP bytes with sharp. Takes image bytes only (no network).
-Done so far: 10 portraits in a flush row (180x360, resized with `cover` if not), class icon (upscaled to 64x64)
-centred below each, dark background, padding. Layout constants are exported at the top of the file.
-Tested with generated fixture images (dimensions, column order, no gaps, icon position, webp, empty input).
-Reference look: the in-game result screenshot (1920x1080, tall tinted columns, star counts above, white icon tiles).
-Not yet done, in rough order: star counts above each portrait, tier-coloured column backgrounds/glow,
-icon tiles, fixed 16:9 canvas.
+Per column, top to bottom: white stars, 180x360 portrait, white class-icon tile. Columns are flush, dark background.
+Layout constants are exported at the top of the file. Tested with generated fixture images.
+
+Assets (all from ArknightsAssets2 `cn`, under `assets/dyn/arts/`):
+- **Stars:** `rarity_hub/rarity_N.png`, white with a drop shadow, N = tier - 1 (so `rarity_5` is six stars; max 175x47).
+  The `gacha_detail_hub/star_N.png` set is yellow and doesn't match the in-game result screen.
+- **Class icon tile:** `profession_large_hub/icon_profession_<class>_large_white.png`, black glyph on a white tile with a
+  shadow, 108x109. (`profession_icons_v2_hub`, used in slice 3, is a white glyph on transparent: now unused.)
+
+Found but not used yet (for the tier-coloured background and glow work):
+- `[pack]cmgachapool/rgba/light_halftone_mask.png` (128x128): the radial halftone dot pattern seen in the 6-star columns.
+- `[pack]cmgachapool/rgba/light_effect_flow.png` (128x128): grey flowing noise, likely an animated glow texture.
+- `[pack]cmgachapool/rgba/light_effect_solid.png`, `pack3/light_effect.png` (208x188, orange dotted blob),
+  `pack2/addtive_back.png` (502x101 horizontal flare), `pack2/spine_bk.png`.
+- `gacha_detail_hub/detail_char_back_{4,5,6}.png`, `*_port.png`: glowing tier-coloured frames (purple, gold, rainbow)
+  from the operator detail view, not the result-screen columns.
+- NOT found: the tinted full-height column backgrounds (purple for 5-star, orange for 6-star). They look like gradients
+  built in the game engine from the halftone mask and tier colours, so they will probably have to be drawn in code.
+
+Still to do: tier-coloured column backgrounds and glow, optional fixed 16:9 canvas.
 
 ## Slice 5: public API + CLI (`src/index.ts`, `src/cli.ts`)
 Glue is written; make it work end to end and finalise the option surface
