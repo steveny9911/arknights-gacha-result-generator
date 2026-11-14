@@ -9,7 +9,8 @@ bun run web                         # demo page at http://localhost:3000
 bun test
 ```
 
-Library use (from another Bun project, e.g. `bun add file:../arknights-gacha-result-generator`):
+Library use (from another Bun project, e.g. `bun add file:../arknights-gacha-result-generator`; that installs a *copy*, so re-run
+`bun install` there after changing this repo, or use `bun link` for a live link):
 
 ```ts
 import { generateTenPullImage, seededRng } from "arknights-gacha-result-generator";
