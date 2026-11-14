@@ -16,7 +16,7 @@ const { values } = parseArgs({
 });
 
 const out = values.out ?? "out/pull.png";
-const { image, result } = await generateTenPullImage({
+const { image, pulls, result } = await generateTenPullImage({
   startPity: Number(values.pity),
   rng: values.seed === undefined ? undefined : seededRng(Number(values.seed)),
 });
@@ -24,4 +24,4 @@ const { image, result } = await generateTenPullImage({
 await mkdir(dirname(out), { recursive: true });
 await writeFile(out, image);
 console.log(`Wrote ${out} (final pity ${result.finalPity})`);
-console.log(result.operators.join("\n"));
+for (const op of pulls) console.log(`${op.rarity}★ ${op.profession.padEnd(8)} ${op.name} (${op.id})`);

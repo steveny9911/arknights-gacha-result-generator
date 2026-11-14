@@ -19,7 +19,8 @@ await Bun.write("pull.png", image);
 
 Options, all optional: `startPity` (0 to 98), `rng` (one source for the pull and the visuals; `seededRng(n)` reproduces an image),
 `format` (`"png"` or `"webp"`), `cacheDir` (default `./cache`), `banner`, `provider` (your own `DataProvider`).
-Returns `{ image: Uint8Array, result }`.
+Returns `{ image, pulls, result }`: the image bytes, the ten operators in pull order (`name`, `rarity`, `profession`, `id`), and the raw
+pull (`result.operators` ids, `result.finalPity`). Names come from the Chinese (zh_CN) table.
 
 See [docs/SLICES.md](docs/SLICES.md) for the build order.
 

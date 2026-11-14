@@ -11,7 +11,7 @@ Last updated 2026-11-12. Stubs throw `Slice N: ... not implemented`, so you can 
 | 4 | Montage renderer | Done, with visual gaps (see "Known issues and ideas for later") |
 | 5 | Public API + CLI | Done; verified from a separate Bun project via a `file:` dependency |
 | 6 | Web page | Done; API verified with curl, page JS not tried in a browser |
-| 7 | Packaging | Not started |
+| 7 | Packaging | Skipped: personal use via a local `file:` dependency, and weabot always runs online (no offline provider needed) |
 
 `bun test` (60 tests), `bun run typecheck` and `bun run cli -- --seed 52` are the quick health checks.
 Everything is committed in git on `main`.
@@ -108,6 +108,7 @@ A path-only clone of each repo (blobless, `git ls-tree`), then grep, plus a web 
 `bun run cli -- [--out path] [--pity N] [--seed N]` works end to end and `generateTenPullImage()` wires provider, pull, and renderer.
 Option surface is final: `banner`, `startPity`, `rng`, `format`, `cacheDir`, `provider`. `halftoneMask` and `panelImages` are no longer public;
 they always come from the provider. `seededRng` is exported. `test/index.test.ts` covers the API with a fake provider (no network).
+`generateTenPullImage` returns `{ image, pulls, result }`; `pulls` is the ten `Operator` objects (name, rarity, profession) in pull order.
 Verified from a scratch project with a `file:` dependency: it imports the TS source and renders a seeded pull.
 
 ## Slice 6: web page (`web/`)

@@ -5,7 +5,7 @@ import { buildBanner } from "./data/pool.ts";
 import { createGithubProvider } from "./data/github.ts";
 import type { DataProvider } from "./data/provider.ts";
 import { renderMontage } from "./render/montage.ts";
-import type { Banner, Rng, TenPullResult, Tier } from "./types.ts";
+import type { Banner, Operator, Rng, TenPullResult, Tier } from "./types.ts";
 
 export interface GenerateOptions {
   /** Defaults to a standard banner built from the provider's operator table. */
@@ -24,6 +24,9 @@ export interface GenerateOptions {
 
 export interface GenerateResult {
   image: Uint8Array;
+  /** The ten operators in pull order, with name, rarity and profession. */
+  pulls: Operator[];
+  /** The raw pull: operator ids and the pity left after the last pull. */
   result: TenPullResult;
 }
 
@@ -41,10 +44,15 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
 
   const result = tenPull(banner, opts.startPity ?? 0, opts.rng);
 
+  const pulls = result.operators.map((id) => {
+    const operator = operators[id];
+    if (!operator) throw new Error(`Unknown operator id: ${id}`);
+    return operator;
+  });
+
   const entries = await Promise.all(
-    result.operators.map(async (id) => {
-      const operator = operators[id];
-      if (!operator) throw new Error(`Unknown operator id: ${id}`);
+    pulls.map(async (operator) => {
+      const id = operator.id;
       const [portrait, classIcon, stars] = await Promise.all([
         provider.getPortrait(id),
         provider.getClassIcon(operator.profession),
@@ -56,7 +64,7 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
 
   const [halftoneMask, panelImages] = await Promise.all([provider.getHalftoneMask(), loadPanelImages(provider)]);
   const image = await renderMontage(entries, { format: opts.format, halftoneMask, panelImages, rng: opts.rng });
-  return { image, result };
+  return { image, pulls, result };
 }
 
 export { tenPull } from "./gacha/gacha.ts";

@@ -33,6 +33,12 @@ describe("generateTenPullImage", () => {
     expect(result.operators).toHaveLength(10);
   });
 
+  test("pulls lists name, rarity and profession in pull order", async () => {
+    const { pulls, result } = await generateTenPullImage({ provider: fakeProvider, rng: seededRng(1) });
+    expect(pulls.map((op) => op.id)).toEqual(result.operators);
+    for (const op of pulls) expect(op).toEqual(operators[op.id]!);
+  });
+
   test("the same seed gives the same pull and the same image", async () => {
     const a = await generateTenPullImage({ provider: fakeProvider, rng: seededRng(5) });
     const b = await generateTenPullImage({ provider: fakeProvider, rng: seededRng(5) });
