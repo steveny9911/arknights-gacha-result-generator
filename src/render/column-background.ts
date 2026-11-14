@@ -42,16 +42,8 @@ const GLOW_BELOW: readonly RampStop[] = [[0, 1, 1], [0.35, 0.8, 0.1], [0.75, 0.2
 /** Sparkle size (radius) and brightness ranges, in pixels and opacity. */
 const SPARKLE_RADIUS = { min: 1, max: 3 };
 const SPARKLE_OPACITY = { min: 0.4, max: 0.95 };
-/** Sparkles: how soft their edges are (blur, px), the chance one lands above the panel, and how strongly they bunch near it. */
-const SPARKLE_BLUR = 0.6;
-const SPARKLE_ABOVE_CHANCE = 0.5;
-const SPARKLE_BUNCHING = 2; // distance from the panel = random^2 x room: squared, so most sit close
-/** Size of one repeat of the halftone mask over the glow, in pixels. */
-const GLOW_DOT_TILE = 24;
-/** Dots over the glow are fainter than the glow itself. */
-const GLOW_DOT_OPACITY = 0.5;
 
-export interface ColumnGeometry {
+interface ColumnGeometry {
   width: number;
   height: number;
   /** Panel position inside the column. */
@@ -108,7 +100,7 @@ export async function renderGlow(
   if (!style.halftone || !halftoneMask) return gradient;
 
   // Repeat the dots over the whole column, then keep them only where the glow is (dest-in = multiply alpha).
-  const tile = await dotLayer(glow, halftoneMask, GLOW_DOT_TILE, GLOW_DOT_OPACITY);
+  const tile = await dotLayer(glow, halftoneMask, 24, 0.5); // 24px repeat, fainter than the glow itself
   const dots = await sharp({ create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
     .composite([{ input: tile, tile: true }, { input: gradient, blend: "dest-in" }])
     .png()
@@ -122,7 +114,7 @@ export async function renderGlow(
  */
 const PANEL_IMAGE_AREA = { left: 9, top: 0, width: 122, height: 369 };
 
-export interface PanelSources {
+interface PanelSources {
   /** The game's panel image (140x388), stretched to fit. Without it the panel is a drawn gradient. */
   image?: Uint8Array;
   /** Halftone dot mask, for tiers that use dots. */
@@ -166,15 +158,16 @@ export async function renderSparkles(
   const between = (range: { min: number; max: number }) => range.min + rng() * (range.max - range.min);
 
   const specks = Array.from({ length: TIER_STYLES[tier].sparkles }, () => {
-    const above = rng() < SPARKLE_ABOVE_CHANCE;
-    const distance = rng() ** SPARKLE_BUNCHING * (above ? panelTop : height - panelBottom);
+    const above = rng() < 0.5;
+    const room = above ? panelTop : height - panelBottom;
+    const distance = rng() ** 2 * room; // squared, so most sit close to the panel
     const y = above ? panelTop - distance : panelBottom + distance;
     return `<circle cx="${(rng() * width).toFixed(1)}" cy="${y.toFixed(1)}" r="${between(SPARKLE_RADIUS).toFixed(2)}"` +
       ` fill="#fff" fill-opacity="${between(SPARKLE_OPACITY).toFixed(2)}"/>`;
   });
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-    <defs><filter id="soft"><feGaussianBlur stdDeviation="${SPARKLE_BLUR}"/></filter></defs>
+    <defs><filter id="soft"><feGaussianBlur stdDeviation="0.6"/></filter></defs>
     <g filter="url(#soft)">${specks.join("")}</g>
   </svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
