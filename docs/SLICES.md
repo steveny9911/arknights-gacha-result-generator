@@ -9,7 +9,7 @@ Last updated 2026-11-12. Stubs throw `Slice N: ... not implemented`, so you can 
 | 2 | Operator data and banner pool | Done |
 | 3 | Portrait, icon and panel images | Done |
 | 4 | Montage renderer | Done, with visual gaps (see "Known issues and ideas for later") |
-| 5 | Public API + CLI | Works end to end; not yet verified from another project |
+| 5 | Public API + CLI | Done; verified from a separate Bun project via a `file:` dependency |
 | 6 | Web page | Stubbed; not run since the slice 4 changes |
 | 7 | Packaging | Not started |
 
@@ -106,8 +106,9 @@ A path-only clone of each repo (blobless, `git ls-tree`), then grep, plus a web 
 
 ## Slice 5: public API + CLI (`src/index.ts`, `src/cli.ts`)
 `bun run cli -- [--out path] [--pity N] [--seed N]` works end to end and `generateTenPullImage()` wires provider, pull, and renderer.
-Still to do: finalise the option surface (`rng`, `provider`, `format`, `panelImages`, `halftoneMask`), and prove it works from a separate
-Bun project via `bun link` or a path dependency.
+Option surface is final: `banner`, `startPity`, `rng`, `format`, `cacheDir`, `provider`. `halftoneMask` and `panelImages` are no longer public;
+they always come from the provider. `seededRng` is exported. `test/index.test.ts` covers the API with a fake provider (no network).
+Verified from a scratch project with a `file:` dependency: it imports the TS source and renders a seeded pull.
 
 ## Slice 6: web page (`web/`)
 Stubbed: `bun run web`, a Pull button calls `/api/pull` and shows the PNG. Not run since the slice 4 changes.
@@ -152,8 +153,6 @@ Ordered roughly by how visible they are.
 - The doc's operator counts (438 pool, 141/201/62/17 per tier) are older than the table we use; ours are 421 and 128/128/49/17.
 
 ### Engineering
-- `GenerateOptions` currently extends `MontageOptions`, so `halftoneMask` and `panelImages` are exposed publicly. Decide in slice 5
-  whether that is the right surface.
 - No test fetches real network data; real-data checks are the scripts in `scripts/`. A fixture-based provider test would help.
 - `scripts/fetch-images.ts` and `scripts/pool-stats.ts` are manual tools, not part of `bun test`.
 

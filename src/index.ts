@@ -4,15 +4,20 @@ import { tenPull } from "./gacha/gacha.ts";
 import { buildBanner } from "./data/pool.ts";
 import { createGithubProvider } from "./data/github.ts";
 import type { DataProvider } from "./data/provider.ts";
-import { renderMontage, type MontageOptions } from "./render/montage.ts";
+import { renderMontage } from "./render/montage.ts";
 import type { Banner, Rng, TenPullResult, Tier } from "./types.ts";
 
-export interface GenerateOptions extends MontageOptions {
+export interface GenerateOptions {
   /** Defaults to a standard banner built from the provider's operator table. */
   banner?: Banner;
+  /** Pulls since the last 6-star, 0 to 98. Default 0. */
   startPity?: number;
-  /** Inject for reproducible results. */
+  /** One source of randomness for the pull and the visuals. Pass `seededRng(n)` to reproduce an image. */
   rng?: Rng;
+  /** Output format. Default "png". */
+  format?: "png" | "webp";
+  /** Where the default provider caches downloads. Default `./cache`. Ignored when `provider` is set. */
+  cacheDir?: string;
   /** Defaults to the GitHub-backed, disk-cached provider. */
   provider?: DataProvider;
 }
@@ -30,7 +35,7 @@ async function loadPanelImages(provider: DataProvider): Promise<Partial<Record<T
 }
 
 export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<GenerateResult> {
-  const provider = opts.provider ?? createGithubProvider();
+  const provider = opts.provider ?? createGithubProvider({ cacheDir: opts.cacheDir });
   const operators = await provider.getOperators();
   const banner = opts.banner ?? buildBanner(operators);
 
@@ -49,13 +54,13 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
     }),
   );
 
-  const halftoneMask = opts.halftoneMask ?? (await provider.getHalftoneMask());
-  const panelImages = opts.panelImages ?? (await loadPanelImages(provider));
-  const image = await renderMontage(entries, { ...opts, halftoneMask, panelImages });
+  const [halftoneMask, panelImages] = await Promise.all([provider.getHalftoneMask(), loadPanelImages(provider)]);
+  const image = await renderMontage(entries, { format: opts.format, halftoneMask, panelImages, rng: opts.rng });
   return { image, result };
 }
 
 export { tenPull } from "./gacha/gacha.ts";
+export { seededRng } from "./gacha/seeded-rng.ts";
 export { buildBanner } from "./data/pool.ts";
 export { createGithubProvider } from "./data/github.ts";
 export type { DataProvider } from "./data/provider.ts";

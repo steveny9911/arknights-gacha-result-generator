@@ -9,13 +9,17 @@ bun run web                         # slice 6
 bun test
 ```
 
-Planned library use:
+Library use (from another Bun project, e.g. `bun add file:../arknights-gacha-result-generator`):
 
 ```ts
-import { generateTenPullImage } from "arknights-gacha-result-generator";
-const { image, result } = await generateTenPullImage();
+import { generateTenPullImage, seededRng } from "arknights-gacha-result-generator";
+const { image, result } = await generateTenPullImage({ rng: seededRng(42) });
 await Bun.write("pull.png", image);
 ```
+
+Options, all optional: `startPity` (0 to 98), `rng` (one source for the pull and the visuals; `seededRng(n)` reproduces an image),
+`format` (`"png"` or `"webp"`), `cacheDir` (default `./cache`), `banner`, `provider` (your own `DataProvider`).
+Returns `{ image: Uint8Array, result }`.
 
 See [docs/SLICES.md](docs/SLICES.md) for the build order.
 
