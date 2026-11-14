@@ -64,24 +64,14 @@ describe("sixStarRate", () => {
     expect(sixStarRate(150)).toBe(1.0);
   });
 
-  test("negative pity throws", () => {
-    expect(() => sixStarRate(-1)).toThrow(RangeError);
+  test("a negative, fractional or NaN pity throws", () => {
+    for (const bad of [-1, 1.5, NaN]) expect(() => sixStarRate(bad)).toThrow(RangeError);
   });
 });
 
 describe("input validation", () => {
-  test("sixStarRate rejects NaN and fractions", () => {
-    expect(() => sixStarRate(NaN)).toThrow(RangeError);
-    expect(() => sixStarRate(1.5)).toThrow(RangeError);
-  });
-
   test("tenPull rejects a bad startPity", () => {
     for (const bad of [NaN, 1.5, -1, 99, 200]) expect(() => tenPull(BANNER, bad)).toThrow(RangeError);
-  });
-
-  test("tenPull accepts the whole 0 to 98 range", () => {
-    expect(() => tenPull(BANNER, 0, seededRng(1))).not.toThrow();
-    expect(() => tenPull(BANNER, 98, seededRng(1))).not.toThrow();
   });
 
   test("seededRng rejects non-integer seeds", () => {

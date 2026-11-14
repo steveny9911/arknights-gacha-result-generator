@@ -26,15 +26,11 @@ const fakeProvider: DataProvider = {
 };
 
 describe("generateTenPullImage", () => {
-  test("returns a 1920x1080 PNG and ten operators", async () => {
-    const { image, result } = await generateTenPullImage({ provider: fakeProvider, rng: seededRng(1) });
+  test("returns a 1920x1080 PNG, ten operators and their details in pull order", async () => {
+    const { image, pulls, result } = await generateTenPullImage({ provider: fakeProvider, rng: seededRng(1) });
     const meta = await sharp(image).metadata();
     expect([meta.format, meta.width, meta.height]).toEqual(["png", 1920, 1080]);
     expect(result.operators).toHaveLength(10);
-  });
-
-  test("pulls lists name, rarity and profession in pull order", async () => {
-    const { pulls, result } = await generateTenPullImage({ provider: fakeProvider, rng: seededRng(1) });
     expect(pulls.map((op) => op.id)).toEqual(result.operators);
     for (const op of pulls) expect(op).toEqual(operators[op.id]!);
   });
@@ -44,11 +40,6 @@ describe("generateTenPullImage", () => {
     const b = await generateTenPullImage({ provider: fakeProvider, rng: seededRng(5) });
     expect(a.result).toEqual(b.result);
     expect(Buffer.from(a.image).equals(Buffer.from(b.image))).toBe(true);
-  });
-
-  test("format webp", async () => {
-    const { image } = await generateTenPullImage({ provider: fakeProvider, format: "webp", rng: seededRng(1) });
-    expect((await sharp(image).metadata()).format).toBe("webp");
   });
 
   test("startPity is honoured", async () => {

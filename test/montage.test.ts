@@ -82,13 +82,6 @@ describe("renderMontage", () => {
     expect(await pixel(image, x, PANEL_TOP + STARS_HEIGHT)).toEqual([255, 0, 0]);
   });
 
-  test("the class icon tile straddles the panel's bottom edge", async () => {
-    const image = await renderMontage([await entry([255, 0, 0])]);
-    const x = columnCentre(0);
-    expect(await pixel(image, x, PANEL_BOTTOM - 30)).toEqual(ICON_RGB); // over the portrait
-    expect(await pixel(image, x, PANEL_BOTTOM + 30)).toEqual(ICON_RGB); // below the panel
-  });
-
   test("the icon's white tile is centred on the column and on the panel's bottom edge", async () => {
     // Like the game's icons: a 90x90 white tile at (9, 0) in a 108x109 image, black elsewhere.
     const tile = await sharp({ create: { width: 90, height: 90, channels: 3, background: "#ffffff" } }).png().toBuffer();
