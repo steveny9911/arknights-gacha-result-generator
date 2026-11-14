@@ -1,4 +1,6 @@
 // SLICE 5: public API. This is the entry point other Bun projects import.
+// Stable surface: generateTenPullImage and its types, seededRng, and the DataProvider interface.
+// The rest (tenPull, buildBanner, createGithubProvider) is exported for building your own provider or banner.
 //   import { generateTenPullImage } from "arknights-gacha-result-generator";
 import { tenPull } from "./gacha/gacha.ts";
 import { buildBanner } from "./data/pool.ts";
@@ -30,6 +32,16 @@ export interface GenerateResult {
   result: TenPullResult;
 }
 
+/** One default provider per cache folder, so repeated calls (a long-running bot) reuse the parsed table and listing. */
+const defaultProviders = new Map<string, DataProvider>();
+
+function defaultProvider(cacheDir: string | undefined): DataProvider {
+  const key = cacheDir ?? "";
+  let provider = defaultProviders.get(key);
+  if (!provider) defaultProviders.set(key, (provider = createGithubProvider({ cacheDir })));
+  return provider;
+}
+
 /** Panel images for every tier that has one. */
 async function loadPanelImages(provider: DataProvider): Promise<Partial<Record<Tier, Uint8Array>>> {
   const tiers: Tier[] = [3, 4, 5, 6];
@@ -38,7 +50,7 @@ async function loadPanelImages(provider: DataProvider): Promise<Partial<Record<T
 }
 
 export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<GenerateResult> {
-  const provider = opts.provider ?? createGithubProvider({ cacheDir: opts.cacheDir });
+  const provider = opts.provider ?? defaultProvider(opts.cacheDir);
   const operators = await provider.getOperators();
   const banner = opts.banner ?? buildBanner(operators);
 
@@ -70,6 +82,6 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
 export { tenPull } from "./gacha/gacha.ts";
 export { seededRng } from "./gacha/seeded-rng.ts";
 export { buildBanner } from "./data/pool.ts";
-export { createGithubProvider } from "./data/github.ts";
+export { createGithubProvider, type GithubProviderOptions } from "./data/github.ts";
 export type { DataProvider } from "./data/provider.ts";
 export type { Banner, Operator, Profession, Rng, TenPullResult, Tier } from "./types.ts";

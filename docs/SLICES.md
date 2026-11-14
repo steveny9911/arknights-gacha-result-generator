@@ -1,7 +1,7 @@
 # Slices and status
 
 Work top to bottom. Each slice has a clear "done" check and only depends on earlier slices.
-Last updated 2026-11-12. Stubs throw `Slice N: ... not implemented`, so you can see which slice a failure belongs to.
+Last updated 2026-11-14, after the code review pass (see "Code review" below).
 
 | # | Slice | Status |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ Last updated 2026-11-12. Stubs throw `Slice N: ... not implemented`, so you can 
 | 6 | Web page | Done; API verified with curl, page JS not tried in a browser |
 | 7 | Packaging | Skipped: personal use via a local `file:` dependency, and weabot always runs online (no offline provider needed) |
 
-`bun test` (60 tests), `bun run typecheck` and `bun run cli -- --seed 52` are the quick health checks.
+`bun test` (86 tests), `bun run typecheck` and `bun run cli -- --seed 52` are the quick health checks.
 Everything is committed in git on `main`.
 
 ## Decisions made
@@ -113,13 +113,19 @@ Verified from a scratch project with a `file:` dependency: it imports the TS sou
 
 ## Slice 6: web page (`web/`)
 Done: `bun run web` serves one page with pity and seed fields, a Pull button and a Download link. `/api/pull?pity=N&seed=N` returns a PNG
-(400 for pity outside 0 to 98). Verified with curl: 200 PNG, same seed gives identical bytes. The page's JavaScript was not exercised in a browser.
+(400 for a bad pity or seed, 500 with the error message if rendering fails). Binds to 127.0.0.1 only: it is a demo page, so renders are not queued or rate limited. Verified with curl: 200 PNG, same seed gives identical bytes. The page's JavaScript was not exercised in a browser.
 
-## Slice 7: packaging
-Decide: publish TS source (works for Bun consumers today) or add a build step with `.d.ts`.
-Move `sharp` to the right dependency type, add `files`, drop `"private": true`, document the API in README.
-Offline option: a bundled snapshot provider so consumers need no network.
-Decide on a cache refresh policy (cached files are reused forever today).
+## Slice 7: packaging (skipped)
+Not needed: the only consumer is `~/weabot`, which uses a local `file:` dependency and always runs online. If this is ever published:
+add `files`, drop `"private": true`, and decide between shipping TS source or a build with `.d.ts`.
+
+## Code review (2026-11-14)
+Three reviewers (gacha and data, rendering, API and project) read the whole codebase; every finding was checked against the code before
+acting. Done: input validation (pity 0 to 98, integer seeds), provider retries after a failed load, 7-day refresh of the operator table and
+portrait listing (with the stale copy as a fallback when offline), download timeout, empty-body rejection, GitHub provider tests, a shared
+gradient builder, `columnLayers`, opaque (no-alpha) output, named constants, and a default provider reused across calls.
+Deliberately not done: per-column memoising of icons, stars and portraits (about 1.7s per render, not worth the key-by-reference
+coupling), sparkle rendering cost, request queueing in the web demo, and a check for wrong-sized assets (they are our own fixed files).
 
 ## Known issues and ideas for later
 
@@ -146,7 +152,7 @@ Ordered roughly by how visible they are.
 - Limited-banner operators are in the pool (their `itemObtainApproach` is also headhunting), so they can appear in a normal pull.
 - The 5-star and 4-star pool lists have not been checked against a real banner (only the 6-star count was spot-checked).
 - Guarantee scope and the lower-tier shrinking under pity are unconfirmed assumptions (see slice 1).
-- The cache is never refreshed; new operators won't appear until `cache/` is deleted. `cache/charportraits.json` is also permanent.
+- The operator table and portrait listing refresh after 7 days; images are kept forever (they don't change). Delete `cache/` to force a refresh.
 - The GitHub trees API call is unauthenticated (60 requests per hour); it runs once and is cached.
 
 ### Open checks carried over from the research docs
@@ -154,7 +160,7 @@ Ordered roughly by how visible they are.
 - The doc's operator counts (438 pool, 141/201/62/17 per tier) are older than the table we use; ours are 421 and 128/128/49/17.
 
 ### Engineering
-- No test fetches real network data; real-data checks are the scripts in `scripts/`. A fixture-based provider test would help.
+- No test fetches real network data; real-data checks are the scripts in `scripts/`. Provider tests use a pre-seeded cache folder.
 - `scripts/fetch-images.ts` and `scripts/pool-stats.ts` are manual tools, not part of `bun test`.
 
 ## Process notes

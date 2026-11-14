@@ -5,7 +5,7 @@ Generates an image of an Arknights 10-pull headhunting result: 10 operator portr
 ```
 bun install
 bun run cli -- --out out/pull.png   # add --seed N for a reproducible pull and image
-bun run web                         # slice 6
+bun run web                         # demo page at http://localhost:3000
 bun test
 ```
 
@@ -17,10 +17,19 @@ const { image, result } = await generateTenPullImage({ rng: seededRng(42) });
 await Bun.write("pull.png", image);
 ```
 
-Options, all optional: `startPity` (0 to 98), `rng` (one source for the pull and the visuals; `seededRng(n)` reproduces an image),
-`format` (`"png"` or `"webp"`), `cacheDir` (default `./cache`), `banner`, `provider` (your own `DataProvider`).
-Returns `{ image, pulls, result }`: the image bytes, the ten operators in pull order (`name`, `rarity`, `profession`, `id`), and the raw
-pull (`result.operators` ids, `result.finalPity`). Names come from the Chinese (zh_CN) table.
+Options, all optional: `startPity` (whole number, 0 to 98), `rng` (one source for the pull and the visuals; `seededRng(n)` with an integer `n`
+reproduces an image), `format` (`"png"` or `"webp"`), `cacheDir`, `banner`, `provider` (your own `DataProvider`).
+Bad `startPity` or seeds throw a `RangeError`.
+Returns `{ image, pulls, result }`: the image bytes, the ten operators in pull order (`name`, `rarity`, `profession`, `id`; names are Chinese,
+from the zh_CN table), and the raw pull (`result.operators` ids, `result.finalPity`).
+
+Things to know when calling it from another project:
+- **Set `cacheDir` to an absolute path.** The default `./cache` is relative to wherever your process runs, so a different working directory
+  means a new cache and a full re-download. The first pull downloads what it needs from GitHub; after that it is served from disk.
+  The operator table and portrait listing refresh after 7 days (the old copy is used if GitHub can't be reached). Images are kept forever.
+- The default provider is reused across calls with the same `cacheDir`, so calling in a loop is cheap. A render takes about 1.5 seconds.
+- The package exports TypeScript source. Bun runs it as is; if you typecheck with `tsc`, set `allowImportingTsExtensions` (with `noEmit`)
+  in your tsconfig.
 
 See [docs/SLICES.md](docs/SLICES.md) for the build order.
 
