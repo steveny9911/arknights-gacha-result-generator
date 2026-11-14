@@ -4,6 +4,7 @@
 // Tiers with `halftone` also get a dot pattern, which needs a mask image. Returns PNG bytes; no network.
 import sharp from "sharp";
 import type { Rng, Tier } from "../types.ts";
+import { verticalGradient, type GradientStop } from "./svg.ts";
 
 interface TierStyle {
   /** Glow colour. */
@@ -41,6 +42,10 @@ const GLOW_BELOW: readonly RampStop[] = [[0, 1, 1], [0.35, 0.8, 0.1], [0.75, 0.2
 /** Sparkle size (radius) and brightness ranges, in pixels and opacity. */
 const SPARKLE_RADIUS = { min: 1, max: 3 };
 const SPARKLE_OPACITY = { min: 0.4, max: 0.95 };
+/** Sparkles: how soft their edges are (blur, px), the chance one lands above the panel, and how strongly they bunch near it. */
+const SPARKLE_BLUR = 0.6;
+const SPARKLE_ABOVE_CHANCE = 0.5;
+const SPARKLE_BUNCHING = 2; // distance from the panel = random^2 x room: squared, so most sit close
 /** Size of one repeat of the halftone mask over the glow, in pixels. */
 const GLOW_DOT_TILE = 24;
 /** Dots over the glow are fainter than the glow itself. */
@@ -62,18 +67,6 @@ function lighten(color: string, amount: number): string {
   };
   return `#${channel(1)}${channel(3)}${channel(5)}`;
 }
-
-const verticalGradient = (width: number, height: number, stops: Array<[number, string, number]>) =>
-  Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-       <defs>
-         <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-           ${stops.map(([at, color, opacity]) => `<stop offset="${at}" stop-color="${color}" stop-opacity="${opacity}"/>`).join("")}
-         </linearGradient>
-       </defs>
-       <rect width="100%" height="100%" fill="url(#g)"/>
-     </svg>`,
-  );
 
 /** A square of `color` whose opacity follows the mask's brightness (white = opaque). */
 async function dotLayer(color: string, mask: Uint8Array, size: number, opacity = 1): Promise<Buffer> {
@@ -99,13 +92,13 @@ export async function renderGlow(
   const { glow, glowStrength } = style;
   const panelBottom = panelTop + panelHeight;
   const colourAt = (whiteness: number) => lighten(glow, whiteness * style.rim);
-  const stops: Array<[number, string, number]> = [
-    ...GLOW_ABOVE.map(([distance, opacity, whiteness]): [number, string, number] => [
+  const stops: GradientStop[] = [
+    ...GLOW_ABOVE.map(([distance, opacity, whiteness]): GradientStop => [
       (panelTop - distance * panelTop) / height,
       colourAt(whiteness),
       opacity * glowStrength,
     ]),
-    ...GLOW_BELOW.map(([distance, opacity, whiteness]): [number, string, number] => [
+    ...GLOW_BELOW.map(([distance, opacity, whiteness]): GradientStop => [
       (panelBottom + distance * (height - panelBottom)) / height,
       colourAt(whiteness),
       opacity * glowStrength,
@@ -160,7 +153,8 @@ export async function renderPanelBackground(
 }
 
 /**
- * Small bright specks scattered through the glow (never over the panel), denser near the panel's edges.
+ * Small bright specks scattered through the glow, denser near the panel's edges. Their centres are never over the
+ * panel (the blur may spill a pixel or two).
  * Positions are random, so call this once per column with the render's `rng`.
  */
 export async function renderSparkles(
@@ -172,15 +166,15 @@ export async function renderSparkles(
   const between = (range: { min: number; max: number }) => range.min + rng() * (range.max - range.min);
 
   const specks = Array.from({ length: TIER_STYLES[tier].sparkles }, () => {
-    const above = rng() < 0.5;
-    const distance = rng() ** 2 * (above ? panelTop : height - panelBottom); // squared: bunched near the panel
+    const above = rng() < SPARKLE_ABOVE_CHANCE;
+    const distance = rng() ** SPARKLE_BUNCHING * (above ? panelTop : height - panelBottom);
     const y = above ? panelTop - distance : panelBottom + distance;
     return `<circle cx="${(rng() * width).toFixed(1)}" cy="${y.toFixed(1)}" r="${between(SPARKLE_RADIUS).toFixed(2)}"` +
       ` fill="#fff" fill-opacity="${between(SPARKLE_OPACITY).toFixed(2)}"/>`;
   });
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-    <defs><filter id="soft"><feGaussianBlur stdDeviation="0.6"/></filter></defs>
+    <defs><filter id="soft"><feGaussianBlur stdDeviation="${SPARKLE_BLUR}"/></filter></defs>
     <g filter="url(#soft)">${specks.join("")}</g>
   </svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();

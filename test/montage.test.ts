@@ -5,7 +5,7 @@ import {
   CANVAS_HEIGHT,
   COLUMN_WIDTH,
   GLOW_GAP,
-  MONTAGE_WIDTH_FOR,
+  montageWidthFor,
   PADDING_X,
   PANEL_BOTTOM,
   PANEL_HEIGHT,
@@ -55,7 +55,7 @@ describe("renderMontage", () => {
     const entries = await Promise.all(Array.from({ length: 10 }, () => entry([200, 0, 0])));
     const meta = await sharp(await renderMontage(entries)).metadata();
     expect([meta.width, meta.height]).toEqual([1920, 1080]);
-    expect(meta.width).toBe(MONTAGE_WIDTH_FOR(10));
+    expect(meta.width).toBe(montageWidthFor(10));
     expect(meta.height).toBe(CANVAS_HEIGHT);
     expect(meta.format).toBe("png");
   });
@@ -120,7 +120,7 @@ describe("renderMontage", () => {
   test("resizes portraits that are not 180x360", async () => {
     const odd = { ...(await entry([9, 9, 9])), portrait: await solid(90, 90, [9, 9, 9]) };
     const meta = await sharp(await renderMontage([odd])).metadata();
-    expect(meta.width).toBe(MONTAGE_WIDTH_FOR(1));
+    expect(meta.width).toBe(montageWidthFor(1));
   });
 
   test("webp output", async () => {

@@ -2,11 +2,12 @@
 // floor reflection near the bottom, dark again at the very bottom. Returns PNG bytes; no network.
 import sharp from "sharp";
 import type { Rng } from "../types.ts";
+import { verticalGradient, type GradientStop } from "./svg.ts";
 
 /**
  * Grey level (0-255) at a height (0 = top, 1 = bottom), shaped after the in-game result screen. The 0.787 stop is
  * the floor reflection. The screen's padding strip reaches ~230 there, but inside the open columns it is far dimmer,
- * and a bright band pulls the eye off the portraits, so the peak is kept low (and was lowered twice on request).
+ * and a bright band pulls the eye off the portraits, so the peak is kept low.
  */
 const PROFILE: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
@@ -34,16 +35,10 @@ export async function renderBackground(width: number, height: number, rng: Rng):
   const shift = (rng() * 2 - 1) * MAX_SHIFT;
   const last = PROFILE.length - 1;
 
-  const stops = PROFILE.map(([at, level], i) => {
+  const stops = PROFILE.map(([at, level], i): GradientStop => {
     const offset = i === 0 || i === last ? at : at + shift; // the ends stay at the canvas edges
-    return `<stop offset="${offset.toFixed(4)}" stop-color="${hexGrey(level * brightness)}"/>`;
+    return [Number(offset.toFixed(4)), hexGrey(level * brightness)];
   });
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">${stops.join("")}</linearGradient>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#g)"/>
-  </svg>`;
-  return sharp(Buffer.from(svg)).png().toBuffer();
+  return sharp(verticalGradient(width, height, stops)).png().toBuffer();
 }

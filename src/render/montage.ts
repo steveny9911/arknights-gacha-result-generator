@@ -1,7 +1,6 @@
 // SLICE 4: compose the ten-pull image with sharp.
-// Each column is drawn bottom to top: glow, sparkles, portrait panel, portrait, stars, class icon.
 // The canvas gradient and the sparkles are random, so pass a seeded `rng` for a reproducible image.
-// Pure function of (operators, image bytes) -> encoded image bytes; no network.
+// No network: it only turns operators and image bytes into encoded image bytes.
 import sharp, { type OverlayOptions } from "sharp";
 import type { Operator, Rng, Tier } from "../types.ts";
 import { renderBackground } from "./background.ts";
@@ -46,9 +45,10 @@ export const ICON_SCALE = 1.5;
 const ICON_SOURCE_SIZE = { width: 108, height: 109 };
 const ICON_TILE_CENTRE = { x: 53.5, y: 44.5 }; // centre of the white tile inside the source image
 
-export const MONTAGE_WIDTH_FOR = (count: number) => PADDING_X * 2 + COLUMN_WIDTH * count;
+export const montageWidthFor = (count: number) => PADDING_X * 2 + COLUMN_WIDTH * count;
 
-const GLOW = { width: COLUMN_WIDTH - GLOW_GAP, height: CANVAS_HEIGHT, panelTop: PANEL_TOP, panelHeight: PANEL_HEIGHT };
+/** Geometry shared by every column's glow and sparkles: as tall as the canvas, panel in the middle. */
+const COLUMN_GEOMETRY = { width: COLUMN_WIDTH - GLOW_GAP, height: CANVAS_HEIGHT, panelTop: PANEL_TOP, panelHeight: PANEL_HEIGHT };
 
 /** Compute `make(tier)` once per tier and share the result. */
 function memoByTier<T>(make: (tier: Tier) => Promise<T>): (tier: Tier) => Promise<T> {
@@ -60,37 +60,51 @@ function memoByTier<T>(make: (tier: Tier) => Promise<T>): (tier: Tier) => Promis
   };
 }
 
+/** What every column shares: per-tier images made once, and the one source of randomness. */
+interface ColumnContext {
+  glowFor: (tier: Tier) => Promise<Buffer>;
+  panelFor: (tier: Tier) => Promise<Buffer>;
+  rng: Rng;
+}
+
+/** One column's layers, bottom to top: glow, sparkles, panel, portrait, stars, class icon. */
+async function columnLayers(entry: MontageEntry, index: number, ctx: ColumnContext): Promise<OverlayOptions[]> {
+  const left = PADDING_X + index * COLUMN_WIDTH;
+  const glowLeft = left + Math.floor(GLOW_GAP / 2);
+  const tier = entry.operator.rarity;
+  return [
+    { input: await ctx.glowFor(tier), left: glowLeft, top: 0 },
+    { input: await renderSparkles(tier, COLUMN_GEOMETRY, ctx.rng), left: glowLeft, top: 0 },
+    { input: await ctx.panelFor(tier), left, top: PANEL_TOP },
+    await portraitLayer(entry.portrait, left),
+    await starsLayer(entry.stars, left),
+    await iconLayer(entry.classIcon, left),
+  ];
+}
+
 export async function renderMontage(
   entries: readonly MontageEntry[],
   opts: MontageOptions = {},
 ): Promise<Uint8Array> {
   if (entries.length === 0) throw new RangeError("entries must not be empty");
 
-  const glowFor = memoByTier((tier) => renderGlow(tier, GLOW, opts.halftoneMask));
-  const panelFor = memoByTier((tier) =>
-    renderPanelBackground(tier, COLUMN_WIDTH, PANEL_HEIGHT, {
-      image: opts.panelImages?.[tier],
-      halftoneMask: opts.halftoneMask,
-    }),
-  );
+  const ctx: ColumnContext = {
+    glowFor: memoByTier((tier) => renderGlow(tier, COLUMN_GEOMETRY, opts.halftoneMask)),
+    panelFor: memoByTier((tier) =>
+      renderPanelBackground(tier, COLUMN_WIDTH, PANEL_HEIGHT, {
+        image: opts.panelImages?.[tier],
+        halftoneMask: opts.halftoneMask,
+      }),
+    ),
+    rng: opts.rng ?? Math.random,
+  };
 
-  const rng = opts.rng ?? Math.random;
+  // One column at a time, so the rng is drawn in a fixed order and a seed reproduces the image.
   const layers: OverlayOptions[] = [];
-  for (const [i, entry] of entries.entries()) {
-    const left = PADDING_X + i * COLUMN_WIDTH;
-    const tier = entry.operator.rarity;
+  for (const [i, entry] of entries.entries()) layers.push(...(await columnLayers(entry, i, ctx)));
 
-    const glowLeft = left + Math.floor(GLOW_GAP / 2);
-    layers.push({ input: await glowFor(tier), left: glowLeft, top: 0 });
-    layers.push({ input: await renderSparkles(tier, GLOW, rng), left: glowLeft, top: 0 });
-    layers.push({ input: await panelFor(tier), left, top: PANEL_TOP });
-    layers.push(await portraitLayer(entry.portrait, left));
-    layers.push(await starsLayer(entry.stars, left));
-    layers.push(await iconLayer(entry.classIcon, left));
-  }
-
-  const canvas = sharp(await renderBackground(MONTAGE_WIDTH_FOR(entries.length), CANVAS_HEIGHT, rng)).composite(layers);
-
+  const background = await renderBackground(montageWidthFor(entries.length), CANVAS_HEIGHT, ctx.rng);
+  const canvas = sharp(background).composite(layers).removeAlpha(); // the picture is fully opaque
   const encoded = opts.format === "webp" ? canvas.webp() : canvas.png();
   return new Uint8Array(await encoded.toBuffer());
 }
