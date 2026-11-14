@@ -82,6 +82,21 @@ describe("renderPanelBackground", () => {
     expect(at(30, 100)).toEqual([255, 0, 0, 255]);
   });
 
+  test("crops the transparent margin off the panel image before stretching", async () => {
+    // 140x388 image: blue margin, with the red panel at (9, 0) sized 122x369 like the game's files.
+    const red = await sharp({ create: { width: 122, height: 369, channels: 3, background: "#ff0000" } }).png().toBuffer();
+    const image = new Uint8Array(
+      await sharp({ create: { width: 140, height: 388, channels: 3, background: "#0000ff" } })
+        .composite([{ input: red, left: 9, top: 0 }])
+        .png()
+        .toBuffer(),
+    );
+    const { info, at } = await raw(await renderPanelBackground(4, 60, 200, { image }));
+    for (const [x, y] of [[0, 0], [info.width - 1, 0], [0, info.height - 1], [info.width - 1, info.height - 1]] as const) {
+      expect(at(x, y)).toEqual([255, 0, 0, 255]);
+    }
+  });
+
   test("the halftone mask changes only tiers that use it", async () => {
     const m = await mask();
     for (const tier of TIERS) {

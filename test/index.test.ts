@@ -55,4 +55,26 @@ describe("generateTenPullImage", () => {
     const { result } = await generateTenPullImage({ provider: fakeProvider, startPity: 98, rng: seededRng(1) });
     expect(result.operators[0]).toBe("char_6");
   });
+
+  test("a custom banner limits who can be pulled", async () => {
+    const banner = { pool: { 3: ["char_3"], 4: ["char_3"], 5: ["char_5"], 6: ["char_5"] } };
+    const { result } = await generateTenPullImage({ provider: fakeProvider, banner, rng: seededRng(3) });
+    for (const id of result.operators) expect(["char_3", "char_5"]).toContain(id);
+  });
+
+  test("a bad startPity is rejected", async () => {
+    for (const startPity of [NaN, 1.5, -1, 99]) {
+      await expect(generateTenPullImage({ provider: fakeProvider, startPity })).rejects.toThrow(RangeError);
+    }
+  });
+
+  test("an operator id missing from the table is an error", async () => {
+    const banner = { pool: { 3: ["ghost"], 4: ["ghost"], 5: ["ghost"], 6: ["ghost"] } };
+    await expect(generateTenPullImage({ provider: fakeProvider, banner })).rejects.toThrow("Unknown operator id: ghost");
+  });
+
+  test("a provider failure rejects the call", async () => {
+    const broken = { ...fakeProvider, getPortrait: () => Promise.reject(new Error("no portrait")) };
+    await expect(generateTenPullImage({ provider: broken, rng: seededRng(1) })).rejects.toThrow("no portrait");
+  });
 });

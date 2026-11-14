@@ -5,6 +5,7 @@ import {
   CANVAS_HEIGHT,
   COLUMN_WIDTH,
   GLOW_GAP,
+  ICON_SCALE,
   montageWidthFor,
   PADDING_X,
   PANEL_BOTTOM,
@@ -88,6 +89,24 @@ describe("renderMontage", () => {
     expect(await pixel(image, x, PANEL_BOTTOM + 30)).toEqual(ICON_RGB); // below the panel
   });
 
+  test("the icon's white tile is centred on the column and on the panel's bottom edge", async () => {
+    // Like the game's icons: a 90x90 white tile at (9, 0) in a 108x109 image, black elsewhere.
+    const tile = await sharp({ create: { width: 90, height: 90, channels: 3, background: "#ffffff" } }).png().toBuffer();
+    const classIcon = new Uint8Array(
+      await sharp({ create: { width: 108, height: 109, channels: 3, background: "#000000" } })
+        .composite([{ input: tile, left: 9, top: 0 }])
+        .png()
+        .toBuffer(),
+    );
+    const image = await renderMontage([{ ...(await entry([255, 0, 0])), classIcon }]);
+    const x = columnCentre(0);
+    const half = (90 * ICON_SCALE) / 2; // 67.5px
+    for (const dx of [-half + 3, half - 3]) expect(await pixel(image, Math.round(x + dx), PANEL_BOTTOM)).toEqual(ICON_RGB);
+    for (const dx of [-half - 3, half + 3]) expect(await pixel(image, Math.round(x + dx), PANEL_BOTTOM)).not.toEqual(ICON_RGB);
+    for (const dy of [-half + 3, half - 3]) expect(await pixel(image, x, Math.round(PANEL_BOTTOM + dy))).toEqual(ICON_RGB);
+    for (const dy of [-half - 3, half + 3]) expect(await pixel(image, x, Math.round(PANEL_BOTTOM + dy))).not.toEqual(ICON_RGB);
+  });
+
   test("each column is tinted by its operator's tier", async () => {
     const tiers = [3, 4, 5, 6] as const;
     const entries = await Promise.all(tiers.map((tier) => entry([0, 0, 0], tier)));
@@ -119,8 +138,14 @@ describe("renderMontage", () => {
 
   test("resizes portraits that are not 180x360", async () => {
     const odd = { ...(await entry([9, 9, 9])), portrait: await solid(90, 90, [9, 9, 9]) };
-    const meta = await sharp(await renderMontage([odd])).metadata();
-    expect(meta.width).toBe(montageWidthFor(1));
+    const image = await renderMontage([odd]);
+    expect((await sharp(image).metadata()).width).toBe(montageWidthFor(1));
+    expect(await pixel(image, columnCentre(0), PANEL_TOP + PANEL_HEIGHT / 2)).toEqual([9, 9, 9]); // still fills the panel
+  });
+
+  test("the output is opaque (no alpha channel)", async () => {
+    const meta = await sharp(await renderMontage([await entry([1, 2, 3])])).metadata();
+    expect([meta.channels, meta.hasAlpha]).toEqual([3, false]);
   });
 
   test("webp output", async () => {
@@ -129,6 +154,6 @@ describe("renderMontage", () => {
   });
 
   test("empty input throws", async () => {
-    expect(renderMontage([])).rejects.toThrow(RangeError);
+    await expect(renderMontage([])).rejects.toThrow(RangeError);
   });
 });
