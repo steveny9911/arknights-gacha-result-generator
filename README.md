@@ -19,7 +19,7 @@ await Bun.write("pull.png", image);
 ```
 
 Options, all optional: `startPity` (whole number, 0 to 98), `rng` (one source for the pull and the visuals; `seededRng(n)` with an integer `n`
-reproduces an image), `format` (`"png"` or `"webp"`), `cacheDir`, `banner`, `provider` (your own `DataProvider`).
+reproduces an image), `format` (`"png"`, exact, about 1.5 MB; or `"webp"`, lossy at quality 95, about 0.4 MB), `cacheDir`, `banner`, `provider` (your own `DataProvider`).
 Bad `startPity` or seeds throw a `RangeError`.
 Returns `{ image, pulls, result }`: the image bytes, the ten operators in pull order (`name`, `rarity`, `profession`, `id`; names are Chinese,
 from the zh_CN table), and the raw pull (`result.operators` ids, `result.finalPity`).
