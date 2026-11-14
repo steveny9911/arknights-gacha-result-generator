@@ -32,16 +32,16 @@ Things to know when calling it from another project:
 - The package exports TypeScript source. Bun runs it as is; if you typecheck with `tsc`, set `allowImportingTsExtensions` (with `noEmit`)
   in your tsconfig.
 
-See [docs/SLICES.md](docs/SLICES.md) for the build order.
+See [docs/SLICES.md](docs/SLICES.md) for status, decisions and known issues.
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
-| `src/gacha/` | Pure algorithm (slice 1) |
-| `src/data/` | `DataProvider` interface, GitHub provider with disk cache, banner pool (slices 2-3) |
-| `src/render/` | sharp montage: layout, tier glows and panels, sparkles, background (slice 4) |
-| `src/index.ts` | Public API (slice 5) |
+| `src/gacha/` | Pure algorithm |
+| `src/data/` | `DataProvider` interface, GitHub provider with disk cache, banner pool |
+| `src/render/` | sharp montage: layout, tier glows and panels, sparkles, background |
+| `src/index.ts` | Public API |
 | `src/cli.ts`, `web/` | Frontends over the public API |
-| `scripts/` | Manual checks against live data |
+| `scripts/` | Manual check against live data |
 | `docs/SLICES.md` | Status, decisions, asset findings, known issues |

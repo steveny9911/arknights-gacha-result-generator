@@ -1,7 +1,6 @@
 # Slices and status
 
 Work top to bottom. Each slice has a clear "done" check and only depends on earlier slices.
-Last updated 2026-11-14, after the code review pass (see "Code review" below).
 
 | # | Slice | Status |
 | --- | --- | --- |
@@ -11,10 +10,9 @@ Last updated 2026-11-14, after the code review pass (see "Code review" below).
 | 4 | Montage renderer | Done, with visual gaps (see "Known issues and ideas for later") |
 | 5 | Public API + CLI | Done; verified from a separate Bun project via a `file:` dependency |
 | 6 | Web page | Done; API verified with curl, page JS not tried in a browser |
-| 7 | Packaging | Skipped: personal use via a local `file:` dependency, and weabot always runs online (no offline provider needed) |
+| 7 | Packaging | Skipped: the only consumer is `~/weabot` via a local `file:` dependency, and it always runs online. To publish later: add `files`, drop `"private": true`, decide between TS source and a build with `.d.ts` |
 
-`bun test` (86 tests), `bun run typecheck` and `bun run cli -- --seed 52` are the quick health checks.
-Everything is committed in git on `main`.
+`bun test`, `bun run typecheck` and `bun run cli -- --seed 52` are the quick health checks.
 
 ## Decisions made
 
@@ -36,14 +34,13 @@ Port of the walkthrough doc's TypeScript reference, minus rate-up. Pure function
 `weightedPick`, `sixStarRate`, `rollRarity`, `pickOperator`, `tenPull`; constants in `constants.ts`; `seeded-rng.ts` (mulberry32).
 Assumptions carried from the doc (marked `ASSUMPTION` in code): the lower tiers shrink proportionally while the 6-star
 rate climbs under pity, and the guarantee applies to every ten-pull.
-18 tests including a 20,000-run statistics check (about 2.7 / 10.8 / 48.0 / 38.5 % for 6/5/4/3-star).
+A 20,000-run statistics test checks the rates (about 2.7 / 10.8 / 48.0 / 38.5 % for 6/5/4/3-star).
 
 ## Slice 2: operator data and banner pool (`src/data/`) — DONE
 `fetchCached` downloads once into `cache/` (concurrent callers share one download; temp file then rename).
 `parseCharacterTable` keeps `char_` ids with `isNotObtainable` false and tier 3-6, and flags `inHeadhunting`.
 `buildBanner` groups flagged operators by tier.
 Result on the 2026-11 table: 421 playable operators; pool 128 / 128 / 49 / 17 for tiers 6 / 5 / 4 / 3.
-`bun scripts/pool-stats.ts` prints these counts.
 What the fields mean (checked against the live table): `isNotObtainable` is a boolean that is true for 30 non-playable entries
 (trainee operators). `itemObtainApproach` is free Chinese text: 招募寻访 headhunting (334), 活动获得 event reward (77),
 凭证交易所 certificate shop (14), 集成战略获得 Integrated Strategies (6), 信用交易所 credit shop (3), and a few singles.
@@ -54,7 +51,7 @@ What the fields mean (checked against the live table): `isNotObtainable` is a bo
   All 322 headhunting operators resolve (305 use `_2`, 17 only `_1`); every portrait is 180x360.
 - **Class icons, stars, panels, halftone mask:** see the asset list under slice 4. Cache folders: `cache/portraits`, `icons`,
   `stars`, `panels`, `effects`.
-- `bun scripts/fetch-images.ts [--all]` downloads and prints sizes.
+- `bun scripts/fetch-images.ts [--all]` downloads portraits and icons and prints sizes (the one manual check against live data).
 
 ## Slice 4: montage renderer (`src/render/`) — DONE for now
 `renderMontage(entries, { format, halftoneMask, panelImages, rng })` -> PNG/WebP bytes. Takes image bytes only (no network).
@@ -92,17 +89,10 @@ Randomness (stand-ins for art we could not find):
   (about 70 vs about 230 in the game) because the user found a bright band distracting; it was lowered twice on request.
 
 ### What the asset search found
-A path-only clone of each repo (blobless, `git ls-tree`), then grep, plus a web search:
-- The result screen's art is `ArknightsAssets2/assets/dyn/ui/recruit/gacha_result/` (older repo: `.../recruit_ten_result_state/`).
-- The glow columns and the 6-star panel are almost certainly `sprite_rare_1/4/5/6` (337x473) in the Spine atlas
-  `assets/dyn/prefabs/gacha/gacha_phase_0/gacha.atlas` (+ `gacha.skel`). The atlas page `gacha.png` (1024x1024) is not exported in
-  ArknightsAssets2 (cn or en), ArknightsAssets, fexli/ArknightsResource, yuanyan3060/ArknightsGameResource, Aceship/Arknight-Images or
-  kiraio-moe/Arknights-Base. If someone has it, regions can be cut out using the coordinates in the atlas file.
-- The stage behind the columns (dark floor, reflections, silhouettes, checkered tiles) is not an image in any repo; it looks like part
-  of the Spine/3D scene.
-- Other found-but-unused textures: `[pack]cmgachapool/rgba/light_effect_flow.png` (flowing noise), `light_effect_solid.png`,
-  `pack3/light_effect.png` (orange dotted blob), `pack2/addtive_back.png` (horizontal flare),
-  `arts/gacha_detail_hub/detail_char_back_{4,5,6}(_port).png` (glowing tier frames from the operator detail view).
+The result screen's art is `ArknightsAssets2/assets/dyn/ui/recruit/gacha_result/`. The glow columns and the 6-star panel are almost certainly
+`sprite_rare_1/4/5/6` in the Spine atlas `assets/dyn/prefabs/gacha/gacha_phase_0/gacha.atlas`, but its page `gacha.png` is not exported in any
+asset repo we checked (ArknightsAssets2 cn and en, ArknightsAssets, fexli/ArknightsResource, yuanyan3060/ArknightsGameResource,
+Aceship/Arknight-Images, kiraio-moe/Arknights-Base). The stage behind the columns is not an image in any repo either.
 
 ## Slice 5: public API + CLI (`src/index.ts`, `src/cli.ts`)
 `bun run cli -- [--out path] [--pity N] [--seed N]` works end to end and `generateTenPullImage()` wires provider, pull, and renderer.
@@ -114,18 +104,6 @@ Verified from a scratch project with a `file:` dependency: it imports the TS sou
 ## Slice 6: web page (`web/`)
 Done: `bun run web` serves one page with pity and seed fields, a Pull button and a Download link. `/api/pull?pity=N&seed=N` returns a PNG
 (400 for a bad pity or seed, 500 with the error message if rendering fails). Binds to 127.0.0.1 only: it is a demo page, so renders are not queued or rate limited. Verified with curl: 200 PNG, same seed gives identical bytes. The page's JavaScript was not exercised in a browser.
-
-## Slice 7: packaging (skipped)
-Not needed: the only consumer is `~/weabot`, which uses a local `file:` dependency and always runs online. If this is ever published:
-add `files`, drop `"private": true`, and decide between shipping TS source or a build with `.d.ts`.
-
-## Code review (2026-11-14)
-Three reviewers (gacha and data, rendering, API and project) read the whole codebase; every finding was checked against the code before
-acting. Done: input validation (pity 0 to 98, integer seeds), provider retries after a failed load, 7-day refresh of the operator table and
-portrait listing (with the stale copy as a fallback when offline), download timeout, empty-body rejection, GitHub provider tests, a shared
-gradient builder, `columnLayers`, opaque (no-alpha) output, named constants, and a default provider reused across calls.
-Deliberately not done: per-column memoising of icons, stars and portraits (about 1.7s per render, not worth the key-by-reference
-coupling), sparkle rendering cost, request queueing in the web demo, and a check for wrong-sized assets (they are our own fixed files).
 
 ## Known issues and ideas for later
 
@@ -159,12 +137,7 @@ Ordered roughly by how visible they are.
 - Confirm 180x360 portraits match the game's result cards (they look right, but this was never compared to the same operator in-game).
 - The doc's operator counts (438 pool, 141/201/62/17 per tier) are older than the table we use; ours are 421 and 128/128/49/17.
 
-### Engineering
-- No test fetches real network data; real-data checks are the scripts in `scripts/`. Provider tests use a pre-seeded cache folder.
-- `scripts/fetch-images.ts` and `scripts/pool-stats.ts` are manual tools, not part of `bun test`.
-
 ## Process notes
+- Provider tests use a pre-seeded cache folder; no test touches the network.
 - Check visuals against the reference screenshots by measuring pixels, not by eye. Two mistakes came from skipping this: an invented
   random hue for the background, and a guessed gold tint for the 5-star panel.
-- A blobless clone plus `git ls-tree --name-only` lists a whole repo cheaply. Do not use `ls-tree -l`: it downloads every blob.
-- Scratch files (downloads, contact sheets) live in the session scratchpad, not in the project.
