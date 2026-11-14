@@ -5,6 +5,7 @@
 import type { Banner, Rng, TenPullResult, Tier } from "../types.ts";
 import {
   LOWEST_RARITY,
+  MAX_PITY,
   MAX_PROBABILITY,
   MIN_GUARANTEED_RARITY,
   NON_SIX_TOTAL,
@@ -55,10 +56,10 @@ export function weightedPick<T>(
  * Chance that the next pull is a 6-star: 2% until PITY_THRESHOLD misses, then
  * +2 points per pull, capped at 1.
  * @param pity Misses in a row so far (0 right after a 6-star).
- * @throws {RangeError} If `pity` is negative.
+ * @throws {RangeError} If `pity` is not a whole number of 0 or more.
  */
 export function sixStarRate(pity: number): number {
-  if (pity < 0) throw new RangeError("pity must not be negative");
+  if (!Number.isInteger(pity) || pity < 0) throw new RangeError("pity must be a whole number, 0 or more");
   if (pity < PITY_THRESHOLD) return RATE_6;
   const boostedPulls = pity - PITY_THRESHOLD + 1; // first boosted pull counts as 1
   return Math.min(MAX_PROBABILITY, RATE_6 + PITY_STEP * boostedPulls);
@@ -72,7 +73,7 @@ export function sixStarRate(pity: number): number {
 export function rollRarity(
   pity: number,
   rng: Rng = Math.random,
-  minRarity: number = LOWEST_RARITY,
+  minRarity: Tier = LOWEST_RARITY,
 ): Tier {
   const p6 = sixStarRate(pity);
   const remaining = MAX_PROBABILITY - p6;
@@ -102,13 +103,17 @@ export function pickOperator(rarity: Tier, banner: Banner, rng: Rng = Math.rando
  * Simulate ten pulls with the "5-star or better" guarantee.
  * ASSUMPTION: the guarantee is applied to every call (the game applies it to the
  * first ten pulls on a banner only).
- * @param startPity Misses already counted before the first pull.
+ * @param startPity Misses already counted before the first pull, 0 to MAX_PITY.
+ * @throws {RangeError} If `startPity` is not a whole number in that range.
  */
 export function tenPull(
   banner: Banner,
   startPity: number = 0,
   rng: Rng = Math.random,
 ): TenPullResult {
+  if (!Number.isInteger(startPity) || startPity < 0 || startPity > MAX_PITY) {
+    throw new RangeError(`startPity must be a whole number from 0 to ${MAX_PITY}`);
+  }
   let pity = startPity;
   const operators: string[] = [];
   let gotGuaranteed = false;

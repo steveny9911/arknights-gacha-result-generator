@@ -15,13 +15,18 @@ const { values } = parseArgs({
   },
 });
 
-const out = values.out ?? "out/pull.png";
-const { image, pulls, result } = await generateTenPullImage({
-  startPity: Number(values.pity),
-  rng: values.seed === undefined ? undefined : seededRng(Number(values.seed)),
-});
+try {
+  const out = values.out ?? "out/pull.png";
+  const { image, pulls, result } = await generateTenPullImage({
+    startPity: Number(values.pity),
+    rng: values.seed === undefined ? undefined : seededRng(Number(values.seed)),
+  });
 
-await mkdir(dirname(out), { recursive: true });
-await writeFile(out, image);
-console.log(`Wrote ${out} (final pity ${result.finalPity})`);
-for (const op of pulls) console.log(`${op.rarity}★ ${op.profession.padEnd(8)} ${op.name} (${op.id})`);
+  await mkdir(dirname(out), { recursive: true });
+  await writeFile(out, image);
+  console.log(`Wrote ${out} (final pity ${result.finalPity})`);
+  for (const op of pulls) console.log(`${op.rarity}★ ${op.profession.padEnd(8)} ${op.name} (${op.id})`);
+} catch (error) {
+  console.error(`Error: ${error instanceof Error ? error.message : error}`);
+  process.exit(1);
+}
