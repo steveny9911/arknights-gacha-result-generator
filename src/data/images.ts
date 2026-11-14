@@ -19,14 +19,15 @@ export function classIconFile(profession: Profession): string {
   return `icon_profession_${profession.toLowerCase()}_large_white.png`;
 }
 
+const PANEL_FILES: Partial<Record<Tier, string>> = { 3: "back_low_1_3.png", 4: "back_four.png", 5: "back_five.png" };
+
 /**
  * The game's portrait-panel art for a tier, or undefined where we don't have it.
  * `back_low_1_3` is the dark panel for 3-star and below. There is no panel image for 6-star: the game
  * draws it from a Spine texture page that isn't exported in any of the asset repos.
  */
 export function panelImageFile(tier: Tier): string | undefined {
-  const files: Partial<Record<Tier, string>> = { 3: "back_low_1_3.png", 4: "back_four.png", 5: "back_five.png" };
-  return files[tier];
+  return PANEL_FILES[tier];
 }
 
 /** White star row for a tier. The files are indexed from 0, so `rarity_5.png` is six stars. */

@@ -1,5 +1,5 @@
 // SLICE 2: parse Kengxxiao's zh_CN character_table.json into Operator records.
-import type { Operator, Profession, Tier } from "../types.ts";
+import { PROFESSIONS, type Operator, type Profession, type Tier } from "../types.ts";
 
 /** The fields we read from one character_table.json entry. */
 interface RawCharacter {
@@ -10,9 +10,7 @@ interface RawCharacter {
   itemObtainApproach: string | null;
 }
 
-const PROFESSIONS: ReadonlySet<string> = new Set<Profession>([
-  "PIONEER", "WARRIOR", "TANK", "SNIPER", "CASTER", "SUPPORT", "MEDIC", "SPECIAL",
-]);
+const KNOWN_PROFESSIONS: ReadonlySet<string> = new Set(PROFESSIONS);
 
 /** `itemObtainApproach` text for headhunting ("recruit"); one entry also appends "、见习任务". */
 const HEADHUNTING_APPROACH = "招募寻访";
@@ -36,7 +34,7 @@ export function parseCharacterTable(raw: Record<string, RawCharacter>): Record<s
   for (const [id, c] of Object.entries(raw)) {
     if (!id.startsWith("char_") || c.isNotObtainable) continue;
     const rarity = parseTier(c.rarity);
-    if (rarity === undefined || !PROFESSIONS.has(c.profession)) continue;
+    if (rarity === undefined || !KNOWN_PROFESSIONS.has(c.profession)) continue;
     operators[id] = {
       id,
       name: c.name,

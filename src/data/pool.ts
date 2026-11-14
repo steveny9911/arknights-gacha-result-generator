@@ -5,7 +5,7 @@ import type { Banner, Operator, Tier } from "../types.ts";
 const TIERS: readonly Tier[] = [6, 5, 4, 3];
 
 /**
- * Standard banner pool: every operator flagged `inHeadhunting`, grouped by tier.
+ * Standard banner pool: every operator flagged `inHeadhunting` (limited-banner operators included), grouped by tier.
  * @throws {RangeError} If a tier ends up empty (the table is broken or filtered wrongly).
  */
 export function buildBanner(operators: Record<string, Operator>): Banner {

@@ -4,16 +4,9 @@ export type Tier = 6 | 5 | 4 | 3;
 /** A source of randomness: each call returns a number in [0, 1). */
 export type Rng = () => number;
 
-/** Operator class, as named in character_table.json `profession`. */
-export type Profession =
-  | "PIONEER"
-  | "WARRIOR"
-  | "TANK"
-  | "SNIPER"
-  | "CASTER"
-  | "SUPPORT"
-  | "MEDIC"
-  | "SPECIAL";
+/** Operator classes, as named in character_table.json `profession`. */
+export const PROFESSIONS = ["PIONEER", "WARRIOR", "TANK", "SNIPER", "CASTER", "SUPPORT", "MEDIC", "SPECIAL"] as const;
+export type Profession = (typeof PROFESSIONS)[number];
 
 /** The slice of operator data this project needs. */
 export interface Operator {
