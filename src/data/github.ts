@@ -5,7 +5,8 @@
 //                                         assets/dyn/arts/rarity_hub/
 //                                         assets/dyn/arts/[pack]cmgachapool/rgba/
 //                                         assets/dyn/ui/recruit/gacha_result/
-// Downloads are cached on disk under `cacheDir` so repeat runs are offline.
+// Downloads are cached on disk under `cacheDir`, so only the first run needs the network.
+// The operator table and portrait listing refresh after 7 days; images are kept for good.
 import type { Operator, Profession, Tier } from "../types.ts";
 import { parseCharacterTable } from "./character-table.ts";
 import { fetchCached } from "./fetch-cache.ts";
@@ -30,6 +31,25 @@ const rawUrl = (dir: string, file: string) =>
 /** One request lists a whole folder (up to 100k entries, unlike the 1000-entry contents API). */
 const portraitListingUrl = `https://api.github.com/repos/${ASSETS_REPO}/git/trees/${ASSETS_BRANCH}:${PORTRAIT_DIR}`;
 
+/** The character table and portrait listing are re-downloaded after this long. Images never change, so they never expire. */
+const TABLE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Run `make` once and share the result for `ttlMs`. A failure isn't remembered, so the next call retries. */
+function memoFor<T>(ttlMs: number, make: () => Promise<T>): () => Promise<T> {
+  let value: Promise<T> | undefined;
+  let expiresAt = 0;
+  return () => {
+    if (!value || Date.now() >= expiresAt) {
+      const current = (value = make());
+      expiresAt = Date.now() + ttlMs;
+      current.catch(() => {
+        if (value === current) value = undefined;
+      });
+    }
+    return value;
+  };
+}
+
 export interface GithubProviderOptions {
   /** Where downloads are cached. Default `./cache`. */
   cacheDir?: string;
@@ -37,21 +57,19 @@ export interface GithubProviderOptions {
 
 export function createGithubProvider(opts: GithubProviderOptions = {}): DataProvider {
   const cacheDir = opts.cacheDir ?? "cache";
-  let operators: Promise<Record<string, Operator>> | undefined;
-  let portraitFiles: Promise<Set<string>> | undefined;
+  const tableOptions = { maxAgeMs: TABLE_MAX_AGE_MS };
 
-  const loadOperators = () =>
-    (operators ??= fetchCached(CHARACTER_TABLE_URL, `${cacheDir}/character_table.json`).then(
-      (bytes) => parseCharacterTable(JSON.parse(new TextDecoder().decode(bytes))),
-    ));
+  const loadOperators = memoFor(TABLE_MAX_AGE_MS, async () => {
+    const bytes = await fetchCached(CHARACTER_TABLE_URL, `${cacheDir}/character_table.json`, tableOptions);
+    return parseCharacterTable(JSON.parse(new TextDecoder().decode(bytes)));
+  });
 
-  const loadPortraitFiles = () =>
-    (portraitFiles ??= fetchCached(portraitListingUrl, `${cacheDir}/charportraits.json`).then(
-      (bytes) => {
-        const tree = JSON.parse(new TextDecoder().decode(bytes)) as { tree: Array<{ path: string }> };
-        return new Set(tree.tree.map((entry) => entry.path));
-      },
-    ));
+  const loadPortraitFiles = memoFor(TABLE_MAX_AGE_MS, async () => {
+    const bytes = await fetchCached(portraitListingUrl, `${cacheDir}/charportraits.json`, tableOptions);
+    const listing = JSON.parse(new TextDecoder().decode(bytes)) as { tree: Array<{ path: string }>; truncated?: boolean };
+    if (listing.truncated) throw new Error("GitHub returned a truncated portrait listing");
+    return new Set(listing.tree.map((entry) => entry.path));
+  });
 
   return {
     getOperators: loadOperators,
