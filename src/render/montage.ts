@@ -105,7 +105,9 @@ export async function renderMontage(
 
   const background = await renderBackground(montageWidthFor(entries.length), CANVAS_HEIGHT, ctx.rng);
   const canvas = sharp(background).composite(layers).removeAlpha(); // the picture is fully opaque
-  const encoded = opts.format === "webp" ? canvas.webp() : canvas.png();
+  // PNG stays exact; adaptive filtering is what shrinks it (level 9 would save under 2% for twice the time).
+  // WebP is lossy: q95 is about a quarter of the PNG, with edges off by a few levels.
+  const encoded = opts.format === "webp" ? canvas.webp({ quality: 95 }) : canvas.png({ adaptiveFiltering: true });
   return new Uint8Array(await encoded.toBuffer());
 }
 
