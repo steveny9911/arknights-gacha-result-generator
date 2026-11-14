@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// SLICE 5: CLI wrapper over the public API.
+// CLI wrapper over the public API.
 //   bun run cli -- [--out out/pull.png] [--pity 0] [--seed 123]
 import { parseArgs } from "node:util";
 import { mkdir, writeFile } from "node:fs/promises";

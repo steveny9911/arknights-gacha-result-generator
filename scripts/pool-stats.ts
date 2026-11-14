@@ -1,4 +1,4 @@
-// Prints headhunting pool counts from the live (cached) table, for eyeballing slice 2.
+// Prints headhunting pool counts from the live (cached) table.
 //   bun scripts/pool-stats.ts
 import { buildBanner } from "../src/data/pool.ts";
 import { createGithubProvider } from "../src/data/github.ts";

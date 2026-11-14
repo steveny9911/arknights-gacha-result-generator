@@ -1,4 +1,4 @@
-// SLICE 2: parse Kengxxiao's zh_CN character_table.json into Operator records.
+// Parse Kengxxiao's zh_CN character_table.json into Operator records.
 import { PROFESSIONS, type Operator, type Profession, type Tier } from "../types.ts";
 
 /** The fields we read from one character_table.json entry. */

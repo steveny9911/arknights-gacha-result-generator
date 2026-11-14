@@ -1,4 +1,4 @@
-// SLICE 2: turn the operator table into a Banner pool.
+// Turn the operator table into a Banner pool.
 // No rate-up: every operator in a tier is equally likely.
 import type { Banner, Operator, Tier } from "../types.ts";
 

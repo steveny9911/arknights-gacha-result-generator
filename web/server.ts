@@ -1,4 +1,4 @@
-// SLICE 6: super simple frontend. One page, one button, GET /api/pull?pity=N&seed=N -> PNG.
+// Super simple frontend. One page, one button, GET /api/pull?pity=N&seed=N -> PNG.
 import { generateTenPullImage, seededRng } from "../src/index.ts";
 
 const page = await Bun.file(new URL("./index.html", import.meta.url)).text();

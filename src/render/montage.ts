@@ -1,4 +1,4 @@
-// SLICE 4: compose the ten-pull image with sharp.
+// Compose the ten-pull image with sharp.
 // The canvas gradient and the sparkles are random, so pass a seeded `rng` for a reproducible image.
 // No network: it only turns operators and image bytes into encoded image bytes.
 import sharp, { type OverlayOptions } from "sharp";

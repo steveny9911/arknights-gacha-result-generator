@@ -1,4 +1,4 @@
-// Downloads every headhunting portrait + class icon into cache/ and prints sizes, for eyeballing slice 3.
+// Downloads every headhunting portrait + class icon into cache/ and prints sizes.
 //   bun scripts/fetch-images.ts [--all]    (default: a few samples only)
 import { buildBanner } from "../src/data/pool.ts";
 import { createGithubProvider } from "../src/data/github.ts";
