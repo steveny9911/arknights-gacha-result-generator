@@ -2,6 +2,8 @@
 
 Generates an image of an Arknights 10-pull headhunting result: 10 operator portraits with class icons.
 
+![Sample 10-pull result (seed 6)](docs/sample.webp)
+
 ```
 bun install
 bun run cli -- --out out/pull.png   # add --seed N for a reproducible pull and image
