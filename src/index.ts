@@ -1,4 +1,4 @@
-// SLICE 5: public API. This is the entry point other Bun projects import.
+// Public API. This is the entry point other Bun projects import.
 // Stable surface: generateTenPullImage and its types, seededRng, and the DataProvider interface.
 // The rest (tenPull, buildBanner, createGithubProvider) is exported for building your own provider or banner.
 //   import { generateTenPullImage } from "arknights-gacha-result-generator";
@@ -42,13 +42,6 @@ function defaultProvider(cacheDir: string | undefined): DataProvider {
   return provider;
 }
 
-/** Panel images for every tier that has one. */
-async function loadPanelImages(provider: DataProvider): Promise<Partial<Record<Tier, Uint8Array>>> {
-  const tiers: Tier[] = [3, 4, 5, 6];
-  const images = await Promise.all(tiers.map((tier) => provider.getPanelImage(tier)));
-  return Object.fromEntries(tiers.flatMap((tier, i) => (images[i] ? [[tier, images[i]]] : [])));
-}
-
 export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<GenerateResult> {
   const provider = opts.provider ?? defaultProvider(opts.cacheDir);
   const operators = await provider.getOperators();
@@ -74,7 +67,9 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
     }),
   );
 
-  const [halftoneMask, panelImages] = await Promise.all([provider.getHalftoneMask(), loadPanelImages(provider)]);
+  const tiers: Tier[] = [3, 4, 5, 6];
+  const [halftoneMask, ...panels] = await Promise.all([provider.getHalftoneMask(), ...tiers.map((tier) => provider.getPanelImage(tier))]);
+  const panelImages = Object.fromEntries(tiers.flatMap((tier, i) => (panels[i] ? [[tier, panels[i]]] : [])));
   const image = await renderMontage(entries, { format: opts.format, halftoneMask, panelImages, rng: opts.rng });
   return { image, pulls, result };
 }

@@ -7,20 +7,16 @@ const DOWNLOAD_TIMEOUT_MS = 30_000;
 /** Downloads in progress, so concurrent callers for one file share a single request and temp file. */
 const inFlight = new Map<string, Promise<Uint8Array>>();
 
-export interface FetchCachedOptions {
-  /** Refresh a cached file older than this. Default: cached files never expire. */
-  maxAgeMs?: number;
-}
-
 /**
  * Return the bytes at `url`, using the file at `cachePath` if it exists and is fresh enough.
+ * `maxAgeMs`: refresh a cached file older than this (default: never expires).
  * If a refresh of an expired file fails (offline, GitHub down), the expired copy is used instead.
  * Downloads are written to a temp file first so a failed run can't leave a half-written cache.
  */
 export async function fetchCached(
   url: string,
   cachePath: string,
-  { maxAgeMs }: FetchCachedOptions = {},
+  { maxAgeMs }: { maxAgeMs?: number } = {},
 ): Promise<Uint8Array> {
   const cached = Bun.file(cachePath);
   const info = (await cached.exists()) ? await stat(cachePath) : undefined;

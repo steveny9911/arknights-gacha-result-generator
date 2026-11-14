@@ -10,7 +10,7 @@
 import type { Operator, Profession, Tier } from "../types.ts";
 import { parseCharacterTable } from "./character-table.ts";
 import { fetchCached } from "./fetch-cache.ts";
-import { classIconFile, panelImageFile, pickPortraitFile, starsFile } from "./images.ts";
+import { classIconFile, PANEL_FILES, pickPortraitFile, starsFile } from "./images.ts";
 import type { DataProvider } from "./provider.ts";
 
 const CHARACTER_TABLE_URL =
@@ -86,7 +86,7 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
       return fetchCached(rawUrl(STARS_DIR, file), `${cacheDir}/stars/${file}`);
     },
     async getPanelImage(tier: Tier) {
-      const file = panelImageFile(tier);
+      const file = PANEL_FILES[tier];
       if (!file) return undefined;
       return fetchCached(rawUrl(RESULT_DIR, file), `${cacheDir}/panels/${file}`);
     },
