@@ -26,6 +26,10 @@ Work top to bottom. Each slice has a clear "done" check and only depends on earl
   separates data and image fetching from rendering, so a host project can supply its own. `renderMontage` takes bytes only.
 - **Randomness is injectable.** One `rng` drives the pull, the sparkles and the background, so `--seed N` reproduces an image exactly.
   Tests always use a seeded rng.
+- **Output format:** PNG by default (exact, works everywhere), tuned with zlib level 9 and adaptive filtering: 2.1 MB to 1.5 MB with
+  identical pixels, for about 0.5 s more. `format: "webp"` is lossy at quality 95: about 0.4 MB, edge pixels differ by a few levels
+  (nothing visible at 1:1). Lossless WebP (1.1 MB, 2 s) and sharp's PNG `effort: 10` (silently palette-quantises, so not lossless) were
+  tried and rejected. Whether weabot's chat platform shows WebP properly is unchecked.
 - **Reference look:** two in-game result screenshots supplied by the user (1920x1080). Layout numbers and colours are measured
   from them, not guessed, wherever possible.
 

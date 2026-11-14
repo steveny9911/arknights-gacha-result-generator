@@ -28,7 +28,7 @@ Things to know when calling it from another project:
 - **Set `cacheDir` to an absolute path.** The default `./cache` is relative to wherever your process runs, so a different working directory
   means a new cache and a full re-download. The first pull downloads what it needs from GitHub; after that it is served from disk.
   The operator table and portrait listing refresh after 7 days (the old copy is used if GitHub can't be reached). Images are kept forever.
-- The default provider is reused across calls with the same `cacheDir`, so calling in a loop is cheap. A render takes about 1.5 seconds.
+- The default provider is reused across calls with the same `cacheDir`, so calling in a loop is cheap. A render takes about 1.7 seconds.
 - The package exports TypeScript source. Bun runs it as is; if you typecheck with `tsc`, set `allowImportingTsExtensions` (with `noEmit`)
   in your tsconfig.
 
