@@ -10,7 +10,7 @@ Last updated 2026-11-12. Stubs throw `Slice N: ... not implemented`, so you can 
 | 3 | Portrait, icon and panel images | Done |
 | 4 | Montage renderer | Done, with visual gaps (see "Known issues and ideas for later") |
 | 5 | Public API + CLI | Done; verified from a separate Bun project via a `file:` dependency |
-| 6 | Web page | Stubbed; not run since the slice 4 changes |
+| 6 | Web page | Done; API verified with curl, page JS not tried in a browser |
 | 7 | Packaging | Not started |
 
 `bun test` (60 tests), `bun run typecheck` and `bun run cli -- --seed 52` are the quick health checks.
@@ -111,8 +111,8 @@ they always come from the provider. `seededRng` is exported. `test/index.test.ts
 Verified from a scratch project with a `file:` dependency: it imports the TS source and renders a seeded pull.
 
 ## Slice 6: web page (`web/`)
-Stubbed: `bun run web`, a Pull button calls `/api/pull` and shows the PNG. Not run since the slice 4 changes.
-Later: seed input, pity field, download button.
+Done: `bun run web` serves one page with pity and seed fields, a Pull button and a Download link. `/api/pull?pity=N&seed=N` returns a PNG
+(400 for pity outside 0 to 98). Verified with curl: 200 PNG, same seed gives identical bytes. The page's JavaScript was not exercised in a browser.
 
 ## Slice 7: packaging
 Decide: publish TS source (works for Bun consumers today) or add a build step with `.d.ts`.

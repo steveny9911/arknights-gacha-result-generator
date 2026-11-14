@@ -12,18 +12,22 @@
   </head>
   <body>
     <h1>Arknights 10-pull</h1>
+    <label>Pity <input id="pity" type="number" min="0" max="98" value="0" style="width:4rem" /></label>
+    <label>Seed <input id="seed" type="number" placeholder="random" style="width:7rem" /></label>
     <button id="pull">Pull</button>
+    <a id="download" download="pull.png" hidden>Download</a>
     <div><img id="result" alt="" hidden /></div>
     <script>
       const btn = document.getElementById("pull");
       const img = document.getElementById("result");
+      const link = document.getElementById("download");
       btn.onclick = async () => {
         btn.disabled = true;
         try {
-          const res = await fetch("/api/pull");
+          const res = await fetch("/api/pull?" + new URLSearchParams({ pity: pity.value, seed: seed.value }));
           if (!res.ok) throw new Error(await res.text());
-          img.src = URL.createObjectURL(await res.blob());
-          img.hidden = false;
+          img.src = link.href = URL.createObjectURL(await res.blob());
+          img.hidden = link.hidden = false;
         } catch (e) { alert(e.message); }
         btn.disabled = false;
       };
