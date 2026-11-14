@@ -7,7 +7,7 @@
 //                                         assets/dyn/ui/recruit/gacha_result/
 // Downloads are cached on disk under `cacheDir`, so only the first run needs the network.
 // The operator table and portrait listing refresh after 7 days; images are kept for good.
-import type { Operator, Profession, Tier } from "../types.ts";
+import type { Profession, Tier } from "../types.ts";
 import { parseCharacterTable } from "./character-table.ts";
 import { fetchCached } from "./fetch-cache.ts";
 import { classIconFile, PANEL_FILES, pickPortraitFile, starsFile } from "./images.ts";
