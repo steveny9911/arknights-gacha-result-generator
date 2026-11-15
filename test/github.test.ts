@@ -39,6 +39,16 @@ test("nameEn falls back to appellation when the EN names can't be loaded", async
   expect(operators.char_001_test!.nameEn).toBe("Тест");
 });
 
+test("after English names fail to load they are not retried straight away", async () => {
+  await seed("character_table.json", table);
+  await seed("character_names_en.json", "{ not json");
+  const provider = createGithubProvider({ cacheDir: dir });
+  await provider.getOperators();
+
+  await seed("character_names_en.json", { char_001_test: "Test" });
+  expect((await provider.getOperators()).char_001_test!.nameEn).toBe("Тест");
+});
+
 test("a failed load is not remembered: fixing the cache makes the next call work", async () => {
   await seed("character_table.json", "{ not json");
   const provider = createGithubProvider({ cacheDir: dir });

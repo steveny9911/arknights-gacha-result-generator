@@ -46,7 +46,7 @@ ten-pulls with carried pity and no guarantee, and checks the 6-star share agains
 `parseCharacterTable` keeps `char_` ids with `isNotObtainable` false and tier 3-6, and flags `inHeadhunting`.
 `buildBanner` groups flagged operators by tier.
 English names come from ArknightsAssets/ArknightsGamedata `en/` (20 MB); it is cached as a small id-to-name map (`character_names_en.json`).
-If it can't be loaded, `nameEn` falls back to the zh_CN `appellation` and the next call retries.
+If it can't be loaded, `nameEn` falls back to the zh_CN `appellation` and loading is retried after a minute.
 Result on the 2026-11 table: 421 playable operators; pool 128 / 128 / 49 / 17 for tiers 6 / 5 / 4 / 3.
 What the fields mean (checked against the live table): `isNotObtainable` is a boolean that is true for 30 non-playable entries
 (trainee operators). `itemObtainApproach` is free Chinese text: 招募寻访 headhunting (334), 活动获得 event reward (77),

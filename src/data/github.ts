@@ -38,6 +38,9 @@ const portraitListingUrl = `https://api.github.com/repos/${ASSETS_REPO}/git/tree
 /** The character table and portrait listing are re-downloaded after this long. Images never change, so they never expire. */
 const TABLE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** After the English names fail to load, don't try again for this long, so an offline run isn't slowed on every call. */
+const ENGLISH_NAMES_RETRY_MS = 60 * 1000;
+
 /** Run `make` once and share the result for `ttlMs`. A failure isn't remembered, so the next call retries. */
 function memoFor<T>(ttlMs: number, make: () => Promise<T>): () => Promise<T> {
   let value: Promise<T> | undefined;
@@ -81,6 +84,18 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
     return JSON.parse(new TextDecoder().decode(bytes)) as Record<string, string>;
   });
 
+  /** English names are optional: if they can't be loaded, `nameEn` stays the zh_CN `appellation` until the retry delay passes. */
+  let retryNamesAt = 0;
+  const loadEnglishNamesOrNone = async (): Promise<Record<string, string>> => {
+    if (Date.now() < retryNamesAt) return {};
+    try {
+      return await loadEnglishNames();
+    } catch {
+      retryNamesAt = Date.now() + ENGLISH_NAMES_RETRY_MS;
+      return {};
+    }
+  };
+
   const loadPortraitFiles = memoFor(TABLE_MAX_AGE_MS, async () => {
     const bytes = await fetchCached(portraitListingUrl, `${cacheDir}/charportraits.json`, tableOptions);
     const listing = JSON.parse(new TextDecoder().decode(bytes)) as { tree: Array<{ path: string }>; truncated?: boolean };
@@ -90,8 +105,7 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
 
   return {
     async getOperators() {
-      // English names are optional: if they can't be loaded, `nameEn` stays the zh_CN `appellation`, and the next call retries.
-      const [operators, names] = await Promise.all([loadOperators(), loadEnglishNames().catch(() => ({}) as Record<string, string>)]);
+      const [operators, names] = await Promise.all([loadOperators(), loadEnglishNamesOrNone()]);
       return Object.fromEntries(Object.entries(operators).map(([id, op]) => [id, { ...op, nameEn: names[id] ?? op.nameEn }]));
     },
     async getPortrait(id) {
