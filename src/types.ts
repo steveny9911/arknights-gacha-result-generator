@@ -14,7 +14,7 @@ export interface Operator {
   id: string;
   /** Chinese name (zh_CN table). */
   name: string;
-  /** English name: the EN client's name, falling back to the zh_CN table's romanized `appellation`. */
+  /** English name: the EN client's name, else the zh_CN `appellation`, else `name`. */
   nameEn: string;
   rarity: Tier;
   profession: Profession;

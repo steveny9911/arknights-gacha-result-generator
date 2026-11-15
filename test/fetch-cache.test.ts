@@ -67,6 +67,20 @@ test("a failed download can be retried", async () => {
   expect(new TextDecoder().decode(await fetchCached(`${server.url}flaky`, path))).toBe("hello");
 });
 
+test("transform shrinks the body before caching; a throwing transform caches nothing", async () => {
+  const path = join(dir, "t.txt");
+  const upper = (body: Uint8Array) => new TextEncoder().encode(new TextDecoder().decode(body).toUpperCase());
+  expect(new TextDecoder().decode(await fetchCached(`${server.url}t`, path, { transform: upper }))).toBe("HELLO");
+  expect(await Bun.file(path).text()).toBe("HELLO");
+
+  const bad = join(dir, "bad.txt");
+  const boom = () => {
+    throw new Error("boom");
+  };
+  await expect(fetchCached(`${server.url}t`, bad, { transform: boom })).rejects.toThrow("boom");
+  expect(await Bun.file(bad).exists()).toBe(false);
+});
+
 describe("maxAgeMs", () => {
   const stale = async (name: string) => {
     const path = join(dir, name);

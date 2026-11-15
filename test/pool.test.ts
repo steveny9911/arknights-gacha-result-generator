@@ -35,14 +35,9 @@ describe("parseCharacterTable", () => {
     );
   });
 
-  test("nameEn prefers the EN table, then appellation, then name", () => {
-    const raw = {
-      char_a: char({ name: "甲", appellation: "Jia" }),
-      char_b: char({ name: "乙", appellation: "Yi" }),
-      char_c: char({ name: "丙" }),
-    };
-    const en = parseCharacterTable(raw, { char_a: "Alpha" });
-    expect([en.char_a!.nameEn, en.char_b!.nameEn, en.char_c!.nameEn]).toEqual(["Alpha", "Yi", "丙"]);
+  test("nameEn is the appellation, else the name", () => {
+    const named = parseCharacterTable({ char_a: char({ appellation: "Jia" }), char_b: char({ name: "丙" }) });
+    expect([named.char_a!.nameEn, named.char_b!.nameEn]).toEqual(["Jia", "丙"]);
   });
 
   test("converts TIER_n to a number and keeps the profession", () => {

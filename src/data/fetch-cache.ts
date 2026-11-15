@@ -10,13 +10,15 @@ const inFlight = new Map<string, Promise<Uint8Array>>();
 /**
  * Return the bytes at `url`, using the file at `cachePath` if it exists and is fresh enough.
  * `maxAgeMs`: refresh a cached file older than this (default: never expires).
+ * `transform`: runs on a downloaded body before it is cached and returned, so a big download can be
+ * cached as a small derived file. If it throws, nothing is cached.
  * If a refresh of an expired file fails (offline, GitHub down), the expired copy is used instead.
  * Downloads are written to a temp file first so a failed run can't leave a half-written cache.
  */
 export async function fetchCached(
   url: string,
   cachePath: string,
-  { maxAgeMs }: { maxAgeMs?: number } = {},
+  { maxAgeMs, transform }: { maxAgeMs?: number; transform?: (body: Uint8Array) => Uint8Array } = {},
 ): Promise<Uint8Array> {
   const cached = Bun.file(cachePath);
   const info = (await cached.exists()) ? await stat(cachePath) : undefined;
@@ -25,7 +27,7 @@ export async function fetchCached(
 
   let pending = inFlight.get(cachePath);
   if (!pending) {
-    pending = download(url, cachePath).finally(() => inFlight.delete(cachePath));
+    pending = download(url, cachePath, transform).finally(() => inFlight.delete(cachePath));
     inFlight.set(cachePath, pending);
   }
   try {
@@ -36,11 +38,12 @@ export async function fetchCached(
   }
 }
 
-async function download(url: string, cachePath: string): Promise<Uint8Array> {
+async function download(url: string, cachePath: string, transform?: (body: Uint8Array) => Uint8Array): Promise<Uint8Array> {
   const res = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`GET ${url} failed: ${res.status} ${res.statusText}`);
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  if (bytes.length === 0) throw new Error(`GET ${url} returned an empty body`);
+  const body = new Uint8Array(await res.arrayBuffer());
+  if (body.length === 0) throw new Error(`GET ${url} returned an empty body`);
+  const bytes = transform ? transform(body) : body;
 
   await mkdir(dirname(cachePath), { recursive: true });
   const tmp = `${cachePath}.${process.pid}.tmp`;

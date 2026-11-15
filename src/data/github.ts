@@ -63,20 +63,22 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
   const cacheDir = opts.cacheDir ?? "cache";
   const tableOptions = { maxAgeMs: TABLE_MAX_AGE_MS };
 
-  /** id -> EN client name. Optional: if it can't be fetched, names fall back to the zh_CN `appellation`. */
-  const loadEnglishNames = async (): Promise<Record<string, string>> => {
-    try {
-      const bytes = await fetchCached(EN_CHARACTER_TABLE_URL, `${cacheDir}/character_table_en.json`, tableOptions);
-      const raw = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, { name?: string }>;
-      return Object.fromEntries(Object.entries(raw).flatMap(([id, c]) => (c.name ? [[id, c.name]] : [])));
-    } catch {
-      return {};
-    }
-  };
-
   const loadOperators = memoFor(TABLE_MAX_AGE_MS, async () => {
     const bytes = await fetchCached(CHARACTER_TABLE_URL, `${cacheDir}/character_table.json`, tableOptions);
-    return parseCharacterTable(JSON.parse(new TextDecoder().decode(bytes)), await loadEnglishNames());
+    return parseCharacterTable(JSON.parse(new TextDecoder().decode(bytes)));
+  });
+
+  /** id -> EN client name. The 20 MB table is cached as just this small map. */
+  const loadEnglishNames = memoFor(TABLE_MAX_AGE_MS, async () => {
+    const bytes = await fetchCached(EN_CHARACTER_TABLE_URL, `${cacheDir}/character_names_en.json`, {
+      ...tableOptions,
+      transform: (body) => {
+        const table = JSON.parse(new TextDecoder().decode(body)) as Record<string, { name?: string } | null>;
+        const names = Object.entries(table).flatMap(([id, c]) => (id.startsWith("char_") && c?.name ? [[id, c.name]] : []));
+        return new TextEncoder().encode(JSON.stringify(Object.fromEntries(names)));
+      },
+    });
+    return JSON.parse(new TextDecoder().decode(bytes)) as Record<string, string>;
   });
 
   const loadPortraitFiles = memoFor(TABLE_MAX_AGE_MS, async () => {
@@ -87,7 +89,11 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
   });
 
   return {
-    getOperators: loadOperators,
+    async getOperators() {
+      // English names are optional: if they can't be loaded, `nameEn` stays the zh_CN `appellation`, and the next call retries.
+      const [operators, names] = await Promise.all([loadOperators(), loadEnglishNames().catch(() => ({}) as Record<string, string>)]);
+      return Object.fromEntries(Object.entries(operators).map(([id, op]) => [id, { ...op, nameEn: names[id] ?? op.nameEn }]));
+    },
     async getPortrait(id) {
       const file = pickPortraitFile(id, await loadPortraitFiles());
       return fetchCached(rawUrl(PORTRAIT_DIR, file), `${cacheDir}/portraits/${file}`);

@@ -1,10 +1,10 @@
-// Parse Kengxxiao's zh_CN character_table.json into Operator records, with English names from the EN table.
+// Parse Kengxxiao's zh_CN character_table.json into Operator records.
 import { PROFESSIONS, type Operator, type Profession, type Tier } from "../types.ts";
 
 /** The fields we read from one character_table.json entry. */
 interface RawCharacter {
   name: string;
-  /** Romanized name; some entries are Cyrillic or spelled differently from the EN client. */
+  /** Romanized name. Used as `nameEn` until the EN client's name is applied; a few entries are Cyrillic. */
   appellation?: string;
   rarity: string; // "TIER_1" .. "TIER_6"
   profession: string;
@@ -30,12 +30,8 @@ function parseTier(rarity: string): Tier | undefined {
  * Keep playable operators (`char_` ids, `isNotObtainable` false, tier 3-6) and flag
  * which of them are in standard headhunting via `itemObtainApproach`.
  * Limited-banner operators are still flagged `inHeadhunting` (their approach is also 招募寻访).
- * `nameEn` is the EN client's name (`englishNames`, by id), else the zh_CN `appellation`, else `name`.
  */
-export function parseCharacterTable(
-  raw: Record<string, RawCharacter>,
-  englishNames: Readonly<Record<string, string>> = {},
-): Record<string, Operator> {
+export function parseCharacterTable(raw: Record<string, RawCharacter>): Record<string, Operator> {
   const operators: Record<string, Operator> = {};
   for (const [id, c] of Object.entries(raw)) {
     if (!id.startsWith("char_") || c.isNotObtainable) continue;
@@ -44,7 +40,7 @@ export function parseCharacterTable(
     operators[id] = {
       id,
       name: c.name,
-      nameEn: englishNames[id] || c.appellation || c.name,
+      nameEn: c.appellation || c.name,
       rarity,
       profession: c.profession as Profession,
       inHeadhunting: c.itemObtainApproach?.startsWith(HEADHUNTING_APPROACH) ?? false,
