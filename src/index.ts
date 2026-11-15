@@ -14,6 +14,8 @@ export interface GenerateOptions {
   banner?: Banner;
   /** Pulls since the last 6-star, 0 to 98. Default 0. */
   startPity?: number;
+  /** Force the last pull to 5-star or better if none of the ten was. Default false: the game does this for a banner's first ten pulls only. */
+  guaranteeFiveStar?: boolean;
   /** One source of randomness for the pull and the visuals. Pass `seededRng(n)` to reproduce an image. */
   rng?: Rng;
   /** Output format. Default "png". */
@@ -47,7 +49,7 @@ export async function generateTenPullImage(opts: GenerateOptions = {}): Promise<
   const operators = await provider.getOperators();
   const banner = opts.banner ?? buildBanner(operators);
 
-  const result = tenPull(banner, opts.startPity ?? 0, opts.rng);
+  const result = tenPull(banner, opts.startPity ?? 0, opts.rng, opts.guaranteeFiveStar);
 
   const pulls = result.operators.map((id) => {
     const operator = operators[id];

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { pickOperator, rollRarity, sixStarRate, tenPull, weightedPick } from "../src/gacha/gacha.ts";
 import { seededRng } from "../src/gacha/seeded-rng.ts";
+import { MAX_PITY } from "../src/gacha/constants.ts";
 import type { Banner, Rng, Tier } from "../src/types.ts";
 
 /** A fake rng that returns the given numbers in order. */
@@ -127,12 +128,19 @@ describe("pickOperator", () => {
 describe("tenPull", () => {
   test("ten results and the guarantee fires", () => {
     // rng 0.5 rolls a 4-star every time; the last pull is forced to 5-star+.
-    const result = tenPull(BANNER, 0, constant(0.5));
+    const result = tenPull(BANNER, 0, constant(0.5), true);
     expect(result.operators).toHaveLength(10);
     const tiers = result.operators.map(tierOf);
     expect(tiers.slice(0, 9)).toEqual(Array(9).fill(4));
     expect(tiers[9]).toBeGreaterThanOrEqual(5);
     expect(result.finalPity).toBe(10);
+  });
+
+  test("without the guarantee the last pull is rolled like the others", () => {
+    for (const result of [tenPull(BANNER, 0, constant(0.5)), tenPull(BANNER, 0, constant(0.5), false)]) {
+      expect(result.operators.map(tierOf)).toEqual(Array(10).fill(4));
+      expect(result.finalPity).toBe(10);
+    }
   });
 
   test("all six-stars reset pity", () => {
@@ -151,7 +159,7 @@ describe("tenPull", () => {
     const counts: Record<Tier, number> = { 6: 0, 5: 0, 4: 0, 3: 0 };
     const runs = 20_000;
     for (let i = 0; i < runs; i++) {
-      const tiers = tenPull(BANNER, 0, rng).operators.map(tierOf);
+      const tiers = tenPull(BANNER, 0, rng, true).operators.map(tierOf);
       expect(tiers.some((t) => t >= 5)).toBe(true); // guarantee holds
       for (const t of tiers) counts[t]++;
     }
@@ -161,5 +169,28 @@ describe("tenPull", () => {
     expect(Math.abs(counts[5] / total - 0.108)).toBeLessThan(0.005);
     expect(Math.abs(counts[4] / total - 0.48)).toBeLessThan(0.008);
     expect(Math.abs(counts[3] / total - 0.385)).toBeLessThan(0.008);
+  });
+
+  test("carried pity without the guarantee gives the long-run 6-star share", () => {
+    // Chain ten-pulls, feeding finalPity back in. The share of 6-stars is 1 / (pulls per 6-star),
+    // worked out here from the rate table.
+    let survive = 1;
+    let pullsPerSix = 0;
+    for (let pity = 0; pity <= MAX_PITY; pity++) {
+      pullsPerSix += survive; // chance of reaching pull number pity + 1
+      survive *= 1 - sixStarRate(pity);
+    }
+    const expected = 1 / pullsPerSix;
+
+    const rng = seededRng(99);
+    let pity = 0;
+    let sixes = 0;
+    const runs = 20_000;
+    for (let i = 0; i < runs; i++) {
+      const result = tenPull(BANNER, pity, rng);
+      sixes += result.operators.filter((op) => tierOf(op) === 6).length;
+      pity = result.finalPity;
+    }
+    expect(Math.abs(sixes / (runs * 10) - expected)).toBeLessThan(0.002);
   });
 });

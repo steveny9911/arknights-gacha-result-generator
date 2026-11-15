@@ -20,7 +20,8 @@ const { image, result } = await generateTenPullImage({ rng: seededRng(42) });
 await Bun.write("pull.png", image);
 ```
 
-Options, all optional: `startPity` (whole number, 0 to 98), `rng` (one source for the pull and the visuals; `seededRng(n)` with an integer `n`
+Options, all optional: `startPity` (whole number, 0 to 98), `guaranteeFiveStar` (default `false`; `true` forces the last pull to 5★ or better if none of the ten was,
+as the game does for a banner's first ten pulls), `rng` (one source for the pull and the visuals; `seededRng(n)` with an integer `n`
 reproduces an image), `format` (`"png"` or `"webp"`), `cacheDir`, `banner`, `provider` (your own `DataProvider`).
 `"png"` is exact and about 1.5 MB; `"webp"` is lossy (quality 95) and about 0.4 MB.
 Bad `startPity` or seeds throw a `RangeError`.

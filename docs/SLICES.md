@@ -17,8 +17,8 @@ Work top to bottom. Each slice has a clear "done" check and only depends on earl
 ## Decisions made
 
 - **No rate-up banners.** Every operator in a tier is equally likely (`pickOperator`).
-- **Guarantee scope:** the "5-star or better in ten" guarantee is applied to every ten-pull (the game applies it to the first
-  ten on a banner only). Fine for a stateless generator; a flag could be added.
+- **Guarantee scope:** the "5-star or better in ten" guarantee is opt-in (`guaranteeFiveStar`, default off, `--guarantee` in the CLI).
+  The game gives it to the first ten pulls on a banner only, so the caller (weabot, which stores pity per user) decides when it applies.
 - **Operator pool:** `itemObtainApproach` starts with `招募寻访` (headhunting). This drops event, shop and Integrated Strategies operators.
 - **Image library:** `sharp`. Bun's built-in `Bun.Image` (1.4.4) can resize and convert but has no compositing.
 - **Data access:** plain HTTPS to `raw.githubusercontent.com` with an on-disk cache in `cache/` (gitignored). No git clones at runtime.
@@ -37,8 +37,9 @@ Work top to bottom. Each slice has a clear "done" check and only depends on earl
 Port of the walkthrough doc's TypeScript reference, minus rate-up. Pure functions, no I/O:
 `weightedPick`, `sixStarRate`, `rollRarity`, `pickOperator`, `tenPull`; constants in `constants.ts`; `seeded-rng.ts` (mulberry32).
 Assumptions carried from the doc (marked `ASSUMPTION` in code): the lower tiers shrink proportionally while the 6-star
-rate climbs under pity, and the guarantee applies to every ten-pull.
-A 20,000-run statistics test checks the rates (about 2.7 / 10.8 / 48.0 / 38.5 % for 6/5/4/3-star).
+rate climbs under pity.
+A 20,000-run statistics test checks the rates with the guarantee on (about 2.7 / 10.8 / 48.0 / 38.5 % for 6/5/4/3-star); another chains
+ten-pulls with carried pity and no guarantee, and checks the 6-star share against the rate table.
 
 ## Slice 2: operator data and banner pool (`src/data/`) — DONE
 `fetchCached` downloads once into `cache/` (concurrent callers share one download; temp file then rename).
@@ -133,7 +134,7 @@ Ordered roughly by how visible they are.
 ### Data and algorithm
 - Limited-banner operators are in the pool (their `itemObtainApproach` is also headhunting), so they can appear in a normal pull.
 - The 5-star and 4-star pool lists have not been checked against a real banner (only the 6-star count was spot-checked).
-- Guarantee scope and the lower-tier shrinking under pity are unconfirmed assumptions (see slice 1).
+- The lower-tier shrinking under pity is an unconfirmed assumption (see slice 1).
 - The operator table and portrait listing refresh after 7 days; images are kept forever (they don't change). Delete `cache/` to force a refresh.
 - The GitHub trees API call is unauthenticated (60 requests per hour); it runs once and is cached.
 
