@@ -4,6 +4,8 @@ import { PROFESSIONS, type Operator, type Profession, type Tier } from "../types
 /** The fields we read from one character_table.json entry. */
 interface RawCharacter {
   name: string;
+  /** Romanized name. Used as `nameEn` until the EN client's name is applied; a few entries are Cyrillic. */
+  appellation?: string;
   rarity: string; // "TIER_1" .. "TIER_6"
   profession: string;
   isNotObtainable: boolean;
@@ -38,6 +40,7 @@ export function parseCharacterTable(raw: Record<string, RawCharacter>): Record<s
     operators[id] = {
       id,
       name: c.name,
+      nameEn: c.appellation || c.name,
       rarity,
       profession: c.profession as Profession,
       inHeadhunting: c.itemObtainApproach?.startsWith(HEADHUNTING_APPROACH) ?? false,

@@ -45,6 +45,8 @@ ten-pulls with carried pity and no guarantee, and checks the 6-star share agains
 `fetchCached` downloads once into `cache/` (concurrent callers share one download; temp file then rename).
 `parseCharacterTable` keeps `char_` ids with `isNotObtainable` false and tier 3-6, and flags `inHeadhunting`.
 `buildBanner` groups flagged operators by tier.
+English names come from ArknightsAssets/ArknightsGamedata `en/` (20 MB); it is cached as a small id-to-name map (`character_names_en.json`).
+If it can't be loaded, `nameEn` falls back to the zh_CN `appellation` and loading is retried after a minute.
 Result on the 2026-11 table: 421 playable operators; pool 128 / 128 / 49 / 17 for tiers 6 / 5 / 4 / 3.
 What the fields mean (checked against the live table): `isNotObtainable` is a boolean that is true for 30 non-playable entries
 (trainee operators). `itemObtainApproach` is free Chinese text: 招募寻访 headhunting (334), 活动获得 event reward (77),
@@ -103,7 +105,7 @@ Aceship/Arknight-Images, kiraio-moe/Arknights-Base). The stage behind the column
 `bun run cli -- [--out path] [--pity N] [--seed N]` works end to end and `generateTenPullImage()` wires provider, pull, and renderer.
 Option surface is final: `banner`, `startPity`, `rng`, `format`, `cacheDir`, `provider`. `halftoneMask` and `panelImages` are no longer public;
 they always come from the provider. `seededRng` is exported. `test/index.test.ts` covers the API with a fake provider (no network).
-`generateTenPullImage` returns `{ image, pulls, result }`; `pulls` is the ten `Operator` objects (name, rarity, profession) in pull order.
+`generateTenPullImage` returns `{ image, pulls, result }`; `pulls` is the ten `Operator` objects (name, nameEn, rarity, profession) in pull order.
 Verified from a scratch project with a `file:` dependency: it imports the TS source and renders a seeded pull.
 
 ## Slice 6: web page (`web/`)

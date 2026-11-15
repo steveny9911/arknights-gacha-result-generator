@@ -12,7 +12,10 @@ export type Profession = (typeof PROFESSIONS)[number];
 export interface Operator {
   /** e.g. `char_002_amiya` */
   id: string;
+  /** Chinese name (zh_CN table). */
   name: string;
+  /** English name: the EN client's name, else the zh_CN `appellation`, else `name`. */
+  nameEn: string;
   rarity: Tier;
   profession: Profession;
   /** True if the operator is in the standard headhunting pool (not event/shop-only). */

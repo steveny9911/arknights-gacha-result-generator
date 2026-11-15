@@ -17,6 +17,7 @@ const seed = (name: string, content: string | object) =>
 const table = {
   char_001_test: {
     name: "测试",
+    appellation: "Тест",
     rarity: "TIER_5",
     profession: "SNIPER",
     isNotObtainable: false,
@@ -24,10 +25,21 @@ const table = {
   },
 };
 
-test("getOperators parses the cached table", async () => {
+test("getOperators parses the cached table and takes nameEn from the EN names", async () => {
   await seed("character_table.json", table);
+  await seed("character_names_en.json", { char_001_test: "Test" });
   const operators = await createGithubProvider({ cacheDir: dir }).getOperators();
-  expect(operators.char_001_test).toMatchObject({ name: "测试", rarity: 5, profession: "SNIPER", inHeadhunting: true });
+  expect(operators.char_001_test).toMatchObject({ name: "测试", nameEn: "Test", rarity: 5, profession: "SNIPER", inHeadhunting: true });
+});
+
+test("nameEn falls back to appellation when the EN names can't be loaded, and isn't retried straight away", async () => {
+  await seed("character_table.json", table);
+  await seed("character_names_en.json", "{ not json");
+  const provider = createGithubProvider({ cacheDir: dir });
+  expect((await provider.getOperators()).char_001_test!.nameEn).toBe("Тест");
+
+  await seed("character_names_en.json", { char_001_test: "Test" });
+  expect((await provider.getOperators()).char_001_test!.nameEn).toBe("Тест");
 });
 
 test("a failed load is not remembered: fixing the cache makes the next call work", async () => {
@@ -36,6 +48,7 @@ test("a failed load is not remembered: fixing the cache makes the next call work
   await expect(provider.getOperators()).rejects.toThrow();
 
   await seed("character_table.json", table);
+  await seed("character_names_en.json", {});
   expect(Object.keys(await provider.getOperators())).toEqual(["char_001_test"]);
 });
 

@@ -11,7 +11,7 @@ const tiers: Tier[] = [3, 4, 5, 6];
 const operators: Record<string, Operator> = Object.fromEntries(
   tiers.map((rarity) => [
     `char_${rarity}`,
-    { id: `char_${rarity}`, name: `op${rarity}`, rarity, profession: "CASTER", inHeadhunting: true },
+    { id: `char_${rarity}`, name: `op${rarity}`, nameEn: `op${rarity}`, rarity, profession: "CASTER", inHeadhunting: true },
   ]),
 );
 

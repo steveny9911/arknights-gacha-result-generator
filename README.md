@@ -25,10 +25,11 @@ as the game does for a banner's first ten pulls), `rng` (one source for the pull
 reproduces an image), `format` (`"png"` or `"webp"`), `cacheDir`, `banner`, `provider` (your own `DataProvider`).
 `"png"` is exact and about 1.5 MB; `"webp"` is lossy (quality 95) and about 0.4 MB.
 Bad `startPity` or seeds throw a `RangeError`.
-Returns `{ image, pulls, result }`: the image bytes, the ten operators in pull order (`name`, `rarity`, `profession`, `id`; names are Chinese,
-from the zh_CN table), and the raw pull (`result.operators` ids, `result.finalPity`).
+Returns `{ image, pulls, result }`: the image bytes, the ten operators in pull order (`name`, `nameEn`, `rarity`, `profession`, `id`; `name` is Chinese,
+`nameEn` is English: the English client's name, else the zh_CN `appellation`, else `name`), and the raw pull (`result.operators` ids, `result.finalPity`).
 
 Things to know when calling it from another project:
+- A custom `DataProvider` must return `nameEn` on every operator.
 - **Set `cacheDir` to an absolute path.** The default `./cache` is relative to wherever your process runs, so a different working directory
   means a new cache and a full re-download. The first pull downloads what it needs from GitHub; after that it is served from disk.
   The operator table and portrait listing refresh after 7 days (the old copy is used if GitHub can't be reached). Images are kept forever.

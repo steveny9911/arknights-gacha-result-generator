@@ -35,6 +35,11 @@ describe("parseCharacterTable", () => {
     );
   });
 
+  test("nameEn is the appellation, else the name", () => {
+    const named = parseCharacterTable({ char_a: char({ appellation: "Jia" }), char_b: char({ name: "丙" }) });
+    expect([named.char_a!.nameEn, named.char_b!.nameEn]).toEqual(["Jia", "丙"]);
+  });
+
   test("converts TIER_n to a number and keeps the profession", () => {
     expect(ops.char_6).toMatchObject({ id: "char_6", rarity: 6, profession: "CASTER" });
   });
