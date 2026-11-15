@@ -35,7 +35,7 @@ const ICON_RGB: Rgb = [255, 255, 255];
 const STARS_HEIGHT = 30;
 
 const entry = async (portraitRgb: Rgb, rarity: Tier = 4): Promise<MontageEntry> => ({
-  operator: { id: "char_x", name: "x", rarity, profession: "CASTER", inHeadhunting: true },
+  operator: { id: "char_x", name: "x", nameEn: "x", rarity, profession: "CASTER", inHeadhunting: true },
   portrait: await solid(180, 360, portraitRgb),
   classIcon: await solid(108, 109, ICON_RGB),
   stars: await solid(100, STARS_HEIGHT, STARS_RGB),

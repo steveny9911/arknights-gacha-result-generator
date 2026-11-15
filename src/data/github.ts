@@ -1,5 +1,6 @@
 // Default DataProvider.
 //   tables : Kengxxiao/ArknightsGameData  zh_CN/gamedata/excel/character_table.json
+//   English names : ArknightsAssets/ArknightsGamedata  en/gamedata/excel/character_table.json (optional)
 //   images : ArknightsAssets2 (cn branch) assets/dyn/arts/charportraits/
 //                                         assets/dyn/arts/profession_large_hub/
 //                                         assets/dyn/arts/rarity_hub/
@@ -15,6 +16,9 @@ import type { DataProvider } from "./provider.ts";
 
 const CHARACTER_TABLE_URL =
   "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/excel/character_table.json";
+
+const EN_CHARACTER_TABLE_URL =
+  "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/master/en/gamedata/excel/character_table.json";
 
 const ASSETS_REPO = "ArknightsAssets/ArknightsAssets2";
 const ASSETS_BRANCH = "cn";
@@ -59,9 +63,20 @@ export function createGithubProvider(opts: GithubProviderOptions = {}): DataProv
   const cacheDir = opts.cacheDir ?? "cache";
   const tableOptions = { maxAgeMs: TABLE_MAX_AGE_MS };
 
+  /** id -> EN client name. Optional: if it can't be fetched, names fall back to the zh_CN `appellation`. */
+  const loadEnglishNames = async (): Promise<Record<string, string>> => {
+    try {
+      const bytes = await fetchCached(EN_CHARACTER_TABLE_URL, `${cacheDir}/character_table_en.json`, tableOptions);
+      const raw = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, { name?: string }>;
+      return Object.fromEntries(Object.entries(raw).flatMap(([id, c]) => (c.name ? [[id, c.name]] : [])));
+    } catch {
+      return {};
+    }
+  };
+
   const loadOperators = memoFor(TABLE_MAX_AGE_MS, async () => {
     const bytes = await fetchCached(CHARACTER_TABLE_URL, `${cacheDir}/character_table.json`, tableOptions);
-    return parseCharacterTable(JSON.parse(new TextDecoder().decode(bytes)));
+    return parseCharacterTable(JSON.parse(new TextDecoder().decode(bytes)), await loadEnglishNames());
   });
 
   const loadPortraitFiles = memoFor(TABLE_MAX_AGE_MS, async () => {

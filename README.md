@@ -25,8 +25,8 @@ as the game does for a banner's first ten pulls), `rng` (one source for the pull
 reproduces an image), `format` (`"png"` or `"webp"`), `cacheDir`, `banner`, `provider` (your own `DataProvider`).
 `"png"` is exact and about 1.5 MB; `"webp"` is lossy (quality 95) and about 0.4 MB.
 Bad `startPity` or seeds throw a `RangeError`.
-Returns `{ image, pulls, result }`: the image bytes, the ten operators in pull order (`name`, `rarity`, `profession`, `id`; names are Chinese,
-from the zh_CN table), and the raw pull (`result.operators` ids, `result.finalPity`).
+Returns `{ image, pulls, result }`: the image bytes, the ten operators in pull order (`name`, `nameEn`, `rarity`, `profession`, `id`; `name` is Chinese from the zh_CN table,
+`nameEn` is the English client's name, falling back to the zh_CN table's romanized `appellation`), and the raw pull (`result.operators` ids, `result.finalPity`).
 
 Things to know when calling it from another project:
 - **Set `cacheDir` to an absolute path.** The default `./cache` is relative to wherever your process runs, so a different working directory
