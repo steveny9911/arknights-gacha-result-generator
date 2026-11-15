@@ -1,6 +1,6 @@
 // The gacha algorithm. Pure functions, no I/O.
 // Pipeline for one pull: sixStarRate -> rollRarity -> pickOperator.
-// tenPull repeats it ten times with a "5-star or better" guarantee.
+// tenPull repeats it ten times, with an optional "5-star or better" guarantee.
 // No rate-up: every operator in a tier is equally likely.
 import type { Banner, Rng, TenPullResult, Tier } from "../types.ts";
 import {
@@ -88,16 +88,17 @@ export function pickOperator(rarity: Tier, banner: Banner, rng: Rng = Math.rando
 }
 
 /**
- * Simulate ten pulls with the "5-star or better" guarantee.
- * ASSUMPTION: the guarantee is applied to every call (the game applies it to the
- * first ten pulls on a banner only).
+ * Simulate ten pulls, optionally with the "5-star or better" guarantee.
+ * The game gives the guarantee on the first ten pulls of a banner only, so the caller decides.
  * @param startPity Misses already counted before the first pull, 0 to MAX_PITY.
+ * @param guaranteeFiveStar Force the last pull to 5-star or better if none of the ten was. Default false.
  * @throws {RangeError} If `startPity` is not a whole number in that range.
  */
 export function tenPull(
   banner: Banner,
   startPity: number = 0,
   rng: Rng = Math.random,
+  guaranteeFiveStar: boolean = false,
 ): TenPullResult {
   if (!Number.isInteger(startPity) || startPity < 0 || startPity > MAX_PITY) {
     throw new RangeError(`startPity must be a whole number from 0 to ${MAX_PITY}`);
@@ -108,7 +109,7 @@ export function tenPull(
 
   for (let pullNumber = 1; pullNumber <= TEN_PULL_SIZE; pullNumber++) {
     // On the last pull, if the guarantee is unmet, only roll tiers that satisfy it.
-    const needsGuarantee = pullNumber === TEN_PULL_SIZE && !gotGuaranteed;
+    const needsGuarantee = guaranteeFiveStar && pullNumber === TEN_PULL_SIZE && !gotGuaranteed;
     const rarity = rollRarity(pity, rng, needsGuarantee ? MIN_GUARANTEED_RARITY : 3);
 
     pity = rarity === 6 ? 0 : pity + 1;

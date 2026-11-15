@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // CLI wrapper over the public API.
-//   bun run cli -- [--out out/pull.png] [--pity 0] [--seed 123]
+//   bun run cli -- [--out out/pull.png] [--pity 0] [--seed 123] [--guarantee]
 import { parseArgs } from "node:util";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
@@ -12,6 +12,7 @@ const { values } = parseArgs({
     out: { type: "string", short: "o", default: "out/pull.png" },
     pity: { type: "string", default: "0" },
     seed: { type: "string" },
+    guarantee: { type: "boolean", default: false },
   },
 });
 
@@ -19,6 +20,7 @@ try {
   const out = values.out ?? "out/pull.png";
   const { image, pulls, result } = await generateTenPullImage({
     startPity: Number(values.pity),
+    guaranteeFiveStar: values.guarantee,
     rng: values.seed === undefined ? undefined : seededRng(Number(values.seed)),
   });
 
